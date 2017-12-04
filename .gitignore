@@ -1,0 +1,4 @@
+*.pyc
+data
+models
+imagenet-vgg-verydeep-19.mat

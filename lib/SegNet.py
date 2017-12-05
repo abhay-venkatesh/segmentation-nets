@@ -2,6 +2,7 @@ import tensorflow as tf
 import numpy as np
 import scipy.io
 from math import ceil
+import random
 
 # Network described by,
 # https://arxiv.org/pdf/1505.04366v1.pdf
@@ -11,6 +12,8 @@ class SegNet:
 
   def __init__(self):
     self.build()
+    self.session = tf.Session()
+    self.session.run(tf.global_variables_initializer())
 
     def weight_variable(self, shape):
       initial = tf.truncated_normal(shape, stddev=0.1)
@@ -135,7 +138,13 @@ class SegNet:
 
       # Produce class scores
       preds = self.deconv_layer(deconv_1_1, [1, 1, 27, 32], 27, 'preds')
-      self.logits = tf.reshape(preds, (-1, 27))
+      logits = tf.reshape(preds, (-1, 27))
+
+      # Prepare network for training
+      cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(
+        labels=tf.reshape(expected, [-1]), logits=logits, name='x_entropy')
+      self.loss = tf.reduce_mean(cross_entropy, name='x_entropy_mean')
+      self.train_step = tf.train.AdamOptimizer(self.rate).minimize(self.loss)
             
     def train(self):
 
@@ -144,5 +153,18 @@ class SegNet:
 
       # Run once for now
       for i in range(1):
-          pass
 
+        # Open image and ground truth
+        image_file = random.choice(training_data)
+        ground_truth_file = image_file.replace('images', 'ground_truths')
+        ground_truth_file = ground_truth_file.replace('pic', 'seg')
+        image = np.float32(cv2.imread(image_file))
+        ground_truth = cv2.imread(ground_truth_file, cv2.IMREAD_GRAYSCALE)
+
+        # Norm to 27 classes, 0-27
+        ground_truth = (ground_truth / 255) * 27
+
+        # Train
+        print('run train step: '+str(i))
+        start = time.time()
+        self.train_step.run(session=self.session, feed_dict={self.x: [image], self.y: [ground_truth], self.rate: learning_rate})

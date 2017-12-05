@@ -1,4 +1,4 @@
 images
-segmentations
+ground_truths
 train.txt
 val.txt

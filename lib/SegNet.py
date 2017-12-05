@@ -126,3 +126,12 @@ class SegNet:
             preds = self.deconv_layer(deconv_1_1, [1, 1, 27, 32], 27, 'preds')
             self.logits = tf.reshape(preds, (-1, 27))
             
+    def train(self):
+
+        # Get training data paths
+        training_data = open('../datasets/unreal_randomyaw/train.txt').readlines()
+
+        # Run once for now
+        for i in range(1):
+            pass
+

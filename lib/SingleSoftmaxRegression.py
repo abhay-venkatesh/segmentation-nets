@@ -12,19 +12,17 @@ sys.path.insert(0,parentdir)
 from datasets.MNIST.mnist import read_data_sets 
 mnist = read_data_sets('MNIST_data', one_hot=True)
 
+# Import tensorflow
 import tensorflow as tf
-sess = tf.InteractiveSession()
 
+# Set placeholders for inputs and predictions
 # None because that dimension will be determined by the batch size
 x = tf.placeholder(tf.float32, shape=[None, 784])
 y_ = tf.placeholder(tf.float32, shape=[None, 10])
 
-# Initialize variables
+# Initialize weight and bias variables
 W = tf.Variable(tf.zeros([784,10]))
 b = tf.Variable(tf.zeros([10]))
-
-# Before using variables, initialize them
-sess.run(tf.global_variables_initializer())
 
 # Goal is to learn W for this regression model
 y = tf.matmul(x,W) + b
@@ -32,6 +30,10 @@ y = tf.matmul(x,W) + b
 # Compute loss
 cross_entropy = tf.nn.softmax_cross_entropy_with_logits(labels=y_, logits=y)
 cross_entropy_mean = tf.reduce_mean(cross_entropy)
+
+# Begin a session
+sess = tf.InteractiveSession()
+sess.run(tf.global_variables_initializer())
 
 # Return an operation object that will allow us to perform gradient descent
 train_step = tf.train.GradientDescentOptimizer(0.5).minimize(cross_entropy_mean)

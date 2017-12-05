@@ -25,35 +25,12 @@ def match_color(object_mask, target_color, tolerance=3):
         else:
             return None
 
-def old_convert():
-    with open('list','r') as f:
-        for i,line in enumerate(f):
-            itemname = line.strip()
-            filename = '../../../dataset/batch1/' + itemname
-            img = cv2.imread(filename)
-            img = cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
-            [m,n] = img.shape[:2]
-            res = np.zeros((m,n))
-
-            print("Working on" + filename)
-
-            for key in color_map:
-                match_region=match_color(img,key)
-                if not (match_region is None):
-                    res = (np.multiply(res, ~match_region)) + match_region*color_map[key]
-
-            outfile = 'converted_data/seg' + str(i) + '.png' 
-            print(outfile)
-            cv2.imwrite(outfile,res*8)
-
-            copyfile(filename.replace('seg','pic'), outfile.replace('seg','pic'))
-
 def new_convert():
-    directory = './converted_data' 
+    directory = '../datasets/unreal_randomyaw/' 
     if not os.path.exists(directory):
         os.makedirs(directory) 
 
-    rootDir = "../../../randomyaw_dataset/"
+    rootDir = "../../../../dataset_randomyaw/"
     counter = 0
     for dirName, subdirList, fileList in os.walk(rootDir):
         print('Found directory: %s' % dirName)
@@ -96,10 +73,7 @@ def convert_for_test():
                 print(outfile)
                 cv2.imwrite(outfile,res*8)
                 copyfile(filePath.replace('seg','pic'), outfile.replace('seg','pic')) 
-                counter += 1
-
-        
-              
+                counter += 1         
 
 def convert_image(dirName, fname, counter):
     convertedPath = os.path.abspath(dirName)
@@ -113,10 +87,13 @@ def convert_image(dirName, fname, counter):
         match_region=match_color(img,key)
         if not (match_region is None):
             res = (np.multiply(res, ~match_region)) + match_region*color_map[key]
-    outfile = 'converted_data/seg' + str(counter) + '.png' 
+    outfile = '../datasets/unreal_randomyaw/segmentations/seg' + str(counter) + '.png' 
     print(outfile)
     cv2.imwrite(outfile,res*8)
-    copyfile(filePath.replace('seg','pic'), outfile.replace('seg','pic')) 
+
+    image_outfile = '../datasets/unreal_randomyaw/images/pic' + str(counter) + '.png'
+    copyfile(filePath.replace('seg','pic'), outfile) 
+    # print(check_converted_image('../datasets/unreal_randomyaw/', 'seg' + str(counter) + '.png'))
 
 def check_converted_image(dirName, fname):
     convertedPath = os.path.abspath(dirName)
@@ -130,10 +107,7 @@ def check_converted_image(dirName, fname):
     return True
 
 def main():
-    # old_convert()
-    # new_convert()
-    # convert_for_test()
-    print(check_converted_image('./converted_data', 'seg10.png'))
+    new_convert() 
 
 
 if __name__ == "__main__":

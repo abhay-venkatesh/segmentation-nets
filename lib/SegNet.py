@@ -9,8 +9,7 @@ from math import ceil
 # and https://arxiv.org/pdf/1511.00561.pdf
 class SegNet:
 
-	def __init__(self, data):
-        self.x = data
+	def __init__(self):
 		self.build()
 
 	# Implementation idea from: https://github.com/tensorflow/tensorflow/issues/2169
@@ -42,6 +41,7 @@ class SegNet:
         values = tf.reshape(x1, [-1])
         delta = tf.SparseTensor(indices, values, tf.to_int64(tf.shape(output)))
         return tf.expand_dims(tf.sparse_tensor_to_dense(tf.sparse_reorder(delta)), 0)
+        
 
 	# TODO: Add batch normalization
 	def conv_layer(self, x, W_shape, b_shape, name, padding='SAME'):
@@ -123,6 +123,6 @@ class SegNet:
             deconv_1_1 = self.deconv_layer(deconv_1_2, [3, 3, 32, 64], 32, 'deconv_1_1')
 
             # Produce class scores
-            self.preds = self.deconv_layer(deconv_1_1, [1, 1, 27, 32], 27, 'preds')
+            preds = self.deconv_layer(deconv_1_1, [1, 1, 27, 32], 27, 'preds')
             self.logits = tf.reshape(preds, (-1, 27))
             

@@ -2,6 +2,7 @@
 Reference: https://www.tensorflow.org/get_started/mnist/pros
 """
 
+# Enable importing custom modules, specifically here - the mnist module for importing data
 import os,sys,inspect
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
@@ -29,10 +30,11 @@ sess.run(tf.global_variables_initializer())
 y = tf.matmul(x,W) + b
 
 # Compute loss
-cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=y_, logits=y))
+cross_entropy = tf.nn.softmax_cross_entropy_with_logits(labels=y_, logits=y)
+cross_entropy_mean = tf.reduce_mean(cross_entropy)
 
 # Return an operation object that will allow us to perform gradient descent
-train_step = tf.train.GradientDescentOptimizer(0.5).minimize(cross_entropy)
+train_step = tf.train.GradientDescentOptimizer(0.5).minimize(cross_entropy_mean)
 
 # Perform gradient descent
 for _ in range(1000):

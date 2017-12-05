@@ -1,8 +1,10 @@
+# Import modules for building the network
 import tensorflow as tf
 import numpy as np
 import scipy.io
 from math import ceil
 import random
+import cv2
 
 # Network described by,
 # https://arxiv.org/pdf/1505.04366v1.pdf
@@ -15,16 +17,16 @@ class SegNet:
     self.session = tf.Session()
     self.session.run(tf.global_variables_initializer())
 
-    def weight_variable(self, shape):
-      initial = tf.truncated_normal(shape, stddev=0.1)
-      return tf.Variable(initial)
+  def weight_variable(self, shape):
+    initial = tf.truncated_normal(shape, stddev=0.1)
+    return tf.Variable(initial)
 
-    def bias_variable(self, shape):
-      initial = tf.constant(0.1, shape=shape)
-      return tf.Variable(initial)
+  def bias_variable(self, shape):
+    initial = tf.constant(0.1, shape=shape)
+    return tf.Variable(initial)
 
-    def pool_layer(self, x):
-      return tf.nn.max_pool_with_argmax(x, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
+  def pool_layer(self, x):
+    return tf.nn.max_pool_with_argmax(x, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
 
   # Implementation idea from: https://github.com/tensorflow/tensorflow/issues/2169
   def unravel_argmax(self, argmax, shape):
@@ -72,99 +74,113 @@ class SegNet:
     return tf.nn.conv2d_transpose(x, W, out_shape, [1, 1, 1, 1], padding=padding) + b
 
   def build(self):
-    with tf.device('/gpu:0'):
-      # First encoder
-      conv_1_1 = self.conv_layer(self.x, [3, 3, 3, 64], 64, 'conv_1_1')
-      conv_1_2 = self.conv_layer(conv_1_1, [3, 3, 64, 64], 64, 'conv_1_2')
-      pool_1, pool_1_argmax = self.pool_layer(conv_1_2)
+    # Declare placeholders
+    self.x = tf.placeholder(tf.float32, shape=(1, None, None, 3))
+    self.y = tf.placeholder(tf.int64, shape=(1, None, None))
+    expected = tf.expand_dims(self.y, -1)
+    self.rate = tf.placeholder(tf.float32, shape=[])
 
-      # Second encoder
-      conv_2_1 = self.conv_layer(pool_1, [3, 3, 64, 128], 128, 'conv_2_1')
-      conv_2_2 = self.conv_layer(conv_2_1, [3, 3, 128, 128], 128, 'conv_2_2')
-      pool_2, pool_2_argmax = self.pool_layer(conv_2_2)
+    # First encoder
+    conv_1_1 = self.conv_layer(self.x, [3, 3, 3, 64], 64, 'conv_1_1')
+    conv_1_2 = self.conv_layer(conv_1_1, [3, 3, 64, 64], 64, 'conv_1_2')
+    pool_1, pool_1_argmax = self.pool_layer(conv_1_2)
 
-      # Third encoder
-      conv_3_1 = self.conv_layer(pool_2, [3, 3, 128, 256], 256, 'conv_3_1')
-      conv_3_2 = self.conv_layer(conv_3_1, [3, 3, 256, 256], 256, 'conv_3_2')
-      conv_3_3 = self.conv_layer(conv_3_2, [3, 3, 256, 256], 256, 'conv_3_3')
-      pool_3, pool_3_argmax = self.pool_layer(conv_3_3)
+    # Second encoder
+    conv_2_1 = self.conv_layer(pool_1, [3, 3, 64, 128], 128, 'conv_2_1')
+    conv_2_2 = self.conv_layer(conv_2_1, [3, 3, 128, 128], 128, 'conv_2_2')
+    pool_2, pool_2_argmax = self.pool_layer(conv_2_2)
 
-      # Fourth encoder
-      conv_4_1 = self.conv_layer(pool_3, [3, 3, 256, 512], 512, 'conv_4_1')
-      conv_4_2 = self.conv_layer(conv_4_1, [3, 3, 512, 512], 512, 'conv_4_2')
-      conv_4_3 = self.conv_layer(conv_4_2, [3, 3, 512, 512], 512, 'conv_4_3')
-      pool_4, pool_4_argmax = self.pool_layer(conv_4_3)
+    # Third encoder
+    conv_3_1 = self.conv_layer(pool_2, [3, 3, 128, 256], 256, 'conv_3_1')
+    conv_3_2 = self.conv_layer(conv_3_1, [3, 3, 256, 256], 256, 'conv_3_2')
+    conv_3_3 = self.conv_layer(conv_3_2, [3, 3, 256, 256], 256, 'conv_3_3')
+    pool_3, pool_3_argmax = self.pool_layer(conv_3_3)
 
-      # Fifth encoder
-      conv_5_1 = self.conv_layer(pool_4, [3, 3, 512, 512], 512, 'conv_5_1')
-      conv_5_2 = self.conv_layer(conv_5_1, [3, 3, 512, 512], 512, 'conv_5_2')
-      conv_5_3 = self.conv_layer(conv_5_2, [3, 3, 512, 512], 512, 'conv_5_3')
-      pool_5, pool_5_argmax = self.pool_layer(conv_5_3)
+    # Fourth encoder
+    conv_4_1 = self.conv_layer(pool_3, [3, 3, 256, 512], 512, 'conv_4_1')
+    conv_4_2 = self.conv_layer(conv_4_1, [3, 3, 512, 512], 512, 'conv_4_2')
+    conv_4_3 = self.conv_layer(conv_4_2, [3, 3, 512, 512], 512, 'conv_4_3')
+    pool_4, pool_4_argmax = self.pool_layer(conv_4_3)
 
-      # Fully connected layers between the encoder and decoder
-      fc_6 = self.conv_layer(pool_5, [7, 7, 512, 4096], 4096, 'fc_6')
-      fc_7 = self.conv_layer(fc_6, [1, 1, 4096, 4096], 4096, 'fc_7')
+    # Fifth encoder
+    conv_5_1 = self.conv_layer(pool_4, [3, 3, 512, 512], 512, 'conv_5_1')
+    conv_5_2 = self.conv_layer(conv_5_1, [3, 3, 512, 512], 512, 'conv_5_2')
+    conv_5_3 = self.conv_layer(conv_5_2, [3, 3, 512, 512], 512, 'conv_5_3')
+    pool_5, pool_5_argmax = self.pool_layer(conv_5_3)
 
-      # Single deconv before beginning decoding
-      deconv_fc_6 = self.deconv_layer(fc_7, [7, 7, 512, 4096], 512, 'fc6_deconv')
+    # Fully connected layers between the encoder and decoder
+    fc_6 = self.conv_layer(pool_5, [7, 7, 512, 4096], 4096, 'fc_6')
+    fc_7 = self.conv_layer(fc_6, [1, 1, 4096, 4096], 4096, 'fc_7')
 
-      # First decoder
-      unpool_5 = self.unpool_layer2x2(deconv_fc_6, pool_5_argmax, tf.shape(conv_5_3))
-      deconv_5_3 = self.deconv_layer(unpool_5, [3, 3, 512, 512], 512, 'deconv_5_3')
-      deconv_5_2 = self.deconv_layer(deconv_5_3, [3, 3, 512, 512], 512, 'deconv_5_2')
-      deconv_5_1 = self.deconv_layer(deconv_5_2, [3, 3, 512, 512], 512, 'deconv_5_1')
+    # Single deconv before beginning decoding
+    deconv_fc_6 = self.deconv_layer(fc_7, [7, 7, 512, 4096], 512, 'fc6_deconv')
 
-      # Second decoder
-      unpool_4 = self.unpool_layer2x2(deconv_5_1, pool_4_argmax, tf.shape(conv_4_3))
-      deconv_4_3 = self.deconv_layer(unpool_4, [3, 3, 512, 512], 512, 'deconv_4_3')
-      deconv_4_2 = self.deconv_layer(deconv_4_3, [3, 3, 512, 512], 512, 'deconv_4_2')
-      deconv_4_1 = self.deconv_layer(deconv_4_2, [3, 3, 256, 512], 256, 'deconv_4_1')
+    # First decoder
+    unpool_5 = self.unpool_layer2x2(deconv_fc_6, pool_5_argmax, tf.shape(conv_5_3))
+    deconv_5_3 = self.deconv_layer(unpool_5, [3, 3, 512, 512], 512, 'deconv_5_3')
+    deconv_5_2 = self.deconv_layer(deconv_5_3, [3, 3, 512, 512], 512, 'deconv_5_2')
+    deconv_5_1 = self.deconv_layer(deconv_5_2, [3, 3, 512, 512], 512, 'deconv_5_1')
 
-      # Third decoder
-      unpool_3 = self.unpool_layer2x2(deconv_4_1, pool_3_argmax, tf.shape(conv_3_3))
-      deconv_3_3 = self.deconv_layer(unpool_3, [3, 3, 256, 256], 256, 'deconv_3_3')
-      deconv_3_2 = self.deconv_layer(deconv_3_3, [3, 3, 256, 256], 256, 'deconv_3_2')
-      deconv_3_1 = self.deconv_layer(deconv_3_2, [3, 3, 128, 256], 128, 'deconv_3_1')
+    # Second decoder
+    unpool_4 = self.unpool_layer2x2(deconv_5_1, pool_4_argmax, tf.shape(conv_4_3))
+    deconv_4_3 = self.deconv_layer(unpool_4, [3, 3, 512, 512], 512, 'deconv_4_3')
+    deconv_4_2 = self.deconv_layer(deconv_4_3, [3, 3, 512, 512], 512, 'deconv_4_2')
+    deconv_4_1 = self.deconv_layer(deconv_4_2, [3, 3, 256, 512], 256, 'deconv_4_1')
 
-      # Fourth decoder
-      unpool_2 = self.unpool_layer2x2(deconv_3_1, pool_2_argmax, tf.shape(conv_2_2))
-      deconv_2_2 = self.deconv_layer(unpool_2, [3, 3, 128, 128], 128, 'deconv_2_2')
-      deconv_2_1 = self.deconv_layer(deconv_2_2, [3, 3, 64, 128], 64, 'deconv_2_1')
+    # Third decoder
+    unpool_3 = self.unpool_layer2x2(deconv_4_1, pool_3_argmax, tf.shape(conv_3_3))
+    deconv_3_3 = self.deconv_layer(unpool_3, [3, 3, 256, 256], 256, 'deconv_3_3')
+    deconv_3_2 = self.deconv_layer(deconv_3_3, [3, 3, 256, 256], 256, 'deconv_3_2')
+    deconv_3_1 = self.deconv_layer(deconv_3_2, [3, 3, 128, 256], 128, 'deconv_3_1')
 
-      # Fifth decoder
-      unpool_1 = self.unpool_layer2x2(deconv_2_1, pool_1_argmax, tf.shape(conv_1_2))
-      deconv_1_2 = self.deconv_layer(unpool_1, [3, 3, 64, 64], 64, 'deconv_1_2')
-      deconv_1_1 = self.deconv_layer(deconv_1_2, [3, 3, 32, 64], 32, 'deconv_1_1')
+    # Fourth decoder
+    unpool_2 = self.unpool_layer2x2(deconv_3_1, pool_2_argmax, tf.shape(conv_2_2))
+    deconv_2_2 = self.deconv_layer(unpool_2, [3, 3, 128, 128], 128, 'deconv_2_2')
+    deconv_2_1 = self.deconv_layer(deconv_2_2, [3, 3, 64, 128], 64, 'deconv_2_1')
 
-      # Produce class scores
-      preds = self.deconv_layer(deconv_1_1, [1, 1, 27, 32], 27, 'preds')
-      logits = tf.reshape(preds, (-1, 27))
+    # Fifth decoder
+    unpool_1 = self.unpool_layer2x2(deconv_2_1, pool_1_argmax, tf.shape(conv_1_2))
+    deconv_1_2 = self.deconv_layer(unpool_1, [3, 3, 64, 64], 64, 'deconv_1_2')
+    deconv_1_1 = self.deconv_layer(deconv_1_2, [3, 3, 32, 64], 32, 'deconv_1_1')
 
-      # Prepare network for training
-      cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(
-        labels=tf.reshape(expected, [-1]), logits=logits, name='x_entropy')
-      self.loss = tf.reduce_mean(cross_entropy, name='x_entropy_mean')
-      self.train_step = tf.train.AdamOptimizer(self.rate).minimize(self.loss)
+    # Produce class scores
+    preds = self.deconv_layer(deconv_1_1, [1, 1, 27, 32], 27, 'preds')
+    logits = tf.reshape(preds, (-1, 27))
+
+    # Prepare network for training
+    cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(
+      labels=tf.reshape(expected, [-1]), logits=logits, name='x_entropy')
+    self.loss = tf.reduce_mean(cross_entropy, name='x_entropy_mean')
+    self.train_step = tf.train.AdamOptimizer(self.rate).minimize(self.loss)
+
+  # Reads an image and its corresponding ground truth
+  def read_data(self, training_data):
+
+    # Open image and ground truth
+    image_directory = './datasets/unreal_randomyaw/images/'
+    image_file = random.choice(training_data)
+    image = np.float32(cv2.imread(image_directory + image_file))
+    ground_truth_directory = './datasets/unreal_randomyaw/ground_truths/'
+    ground_truth_file = image_file.replace('pic', 'seg')
+    ground_truth = cv2.imread(ground_truth_directory + ground_truth_file, cv2.IMREAD_GRAYSCALE)
+
+    # Norm to 27 classes, 0-27
+    ground_truth = (ground_truth / 255) * 27
+
+    return image, ground_truth
+
             
-    def train(self):
+  def train(self, learning_rate=1e-6):
 
-      # Get training data paths
-      training_data = open('../datasets/unreal_randomyaw/train.txt').readlines()
+    # Get training data paths
+    training_data = open('./datasets/unreal_randomyaw/train.txt').readlines()
+    
+    # Run once for now
+    for i in range(1):
 
-      # Run once for now
-      for i in range(1):
+      image, ground_truth = self.read_data(training_data)
 
-        # Open image and ground truth
-        image_file = random.choice(training_data)
-        ground_truth_file = image_file.replace('images', 'ground_truths')
-        ground_truth_file = ground_truth_file.replace('pic', 'seg')
-        image = np.float32(cv2.imread(image_file))
-        ground_truth = cv2.imread(ground_truth_file, cv2.IMREAD_GRAYSCALE)
-
-        # Norm to 27 classes, 0-27
-        ground_truth = (ground_truth / 255) * 27
-
-        # Train
-        print('run train step: '+str(i))
-        start = time.time()
-        self.train_step.run(session=self.session, feed_dict={self.x: [image], self.y: [ground_truth], self.rate: learning_rate})
+      # Train
+      print('run train step: '+str(i))
+      self.train_step.run(session=self.session, 
+        feed_dict={self.x: [image], self.y: [ground_truth], self.rate: learning_rate})

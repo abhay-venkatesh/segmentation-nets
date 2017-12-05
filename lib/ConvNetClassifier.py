@@ -2,7 +2,7 @@
 Reference: https://www.tensorflow.org/get_started/mnist/pros
 """
 
-# Enable importing custom modules, specifically here - the mnist module for importing data
+# Enable importing custom modules, specifically here - the mnist module for importing MNIST dataset
 import os,sys,inspect
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)

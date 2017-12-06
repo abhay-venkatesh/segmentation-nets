@@ -5,6 +5,7 @@ import scipy.io
 from math import ceil
 import cv2
 from utils.DatasetReader import DatasetReader
+from PIL import Image
 
 # Network described by,
 # https://arxiv.org/pdf/1505.04366v1.pdf
@@ -154,7 +155,7 @@ class SegNet:
 
     # Produce class scores
     preds = self.deconv_layer(deconv_1_1, [1, 1, 27, 32], 27, 'preds')
-    logits = tf.reshape(preds, (-1, 27))
+    self.logits = tf.reshape(preds, (-1, 27))
 
     # Prepare network for training
     cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(
@@ -180,18 +181,26 @@ class SegNet:
 
       # Print loss every 10 iterations
       if i % 10 == 0:
-        train_loss = sess.run(self.loss, feed_dict=feed_dict)
+        train_loss = self.session.run(self.loss, feed_dict=feed_dict)
         print("Step: %d, Train_loss:%g" % (i, train_loss))
 
-      # Test against validation dataset for 100 iterations
+      # Run against validation dataset for 100 iterations
       if i % 100 == 0:
         image, ground_truth = dataset.next_val_pair()
         feed_dict = {self.x: [image], self.y: [ground_truth], self.rate: learning_rate}
-        val_loss = sess.run(self.loss, feed_dict=feed_dict)
-        val_accuracy = sess.run(self.accuracy, feed_dict=feed_dict)
+        val_loss = self.session.run(self.loss, feed_dict=feed_dict)
+        val_accuracy = self.session.run(self.accuracy, feed_dict=feed_dict)
         print("%s ---> Validation_loss: %g" % (datetime.datetime.now(), valid_loss))
         print("%s ---> Validation_accuracy: %g" % (datetime.datetime.now(), valid_accuracy))
 
         # Save the model variables
         self.saver.save(self.session, self.checkpoint_directory + 'segnet', global_step = i)
+
+  def test(self, learning_rate=1e-6):
+
+    dataset = DatasetReader()
+    image, ground_truth = dataset.next_test_pair() 
+    feed_dict = {self.x: [image], self.y: [ground_truth], self.rate: learning_rate}
+    prediction = self.session(self.logits, feed_dict=feed_dict)
+    print(type(prediction))
         

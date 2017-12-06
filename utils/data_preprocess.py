@@ -40,15 +40,6 @@ def preprocess():
                 convert_image(dirName, fname, counter)
                 counter += 1
 
-            # Take multiple views for every 10th image
-            '''
-            if counter%10 == 0 and fname == 'seg1.png':
-                counter += 1
-                convert_image(dirName, fname, counter)
-            '''
-
-        
-
 def convert_for_test():
     directory = './converted_data' 
     if not os.path.exists(directory):

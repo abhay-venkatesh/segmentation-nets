@@ -7,6 +7,7 @@ import cv2
 from utils.DatasetReader import DatasetReader
 from PIL import Image
 import datetime
+import os
 
 class SegNet:
   ''' Network described by,
@@ -164,11 +165,32 @@ class SegNet:
     predicted_image = tf.argmax(preds, axis=3)
     self.accuracy = tf.contrib.metrics.accuracy(tf.cast(predicted_image, tf.int64), self.y, name='accuracy')
 
+
+  def restore_session(self):
+    global_step = 0
+
+    if not os.path.exists(self.checkpoint_directory):
+      raise IOError(self.checkpoint_directory + ' does not exist.')
+    else:
+      path = tf.train.get_checkpoint_state(self.checkpoint_directory)
+      if path is None:
+        pass
+      else:
+        self.saver.restore(self.session, path.model_checkpoint_path)
+        global_step = int(path.model_checkpoint_path.split('-')[-1])
+
+    return global_step
+
+  
   def train(self, num_iterations=10000, learning_rate=1e-6):
+
+    # Restore previous session if exists
+    current_step = self.restore_session()
+
     dataset = DatasetReader()
     
     # Begin Training
-    for i in range(num_iterations):
+    for i in range(current_step, num_iterations):
 
       # One training step
       image, ground_truth = dataset.next_train_pair()

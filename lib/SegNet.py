@@ -3,8 +3,8 @@ import tensorflow as tf
 import numpy as np
 import scipy.io
 from math import ceil
-import random
 import cv2
+from utils.DatasetReader import DatasetReader
 
 # Network described by,
 # https://arxiv.org/pdf/1505.04366v1.pdf
@@ -28,13 +28,13 @@ class SegNet:
   def pool_layer(self, x):
     return tf.nn.max_pool_with_argmax(x, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
 
-  # Implementation idea from: https://github.com/tensorflow/tensorflow/issues/2169
   def unravel_argmax(self, argmax, shape):
     output_list = []
     output_list.append(argmax // (shape[2] * shape[3]))
     output_list.append(argmax % (shape[2] * shape[3]) // shape[3])
     return tf.stack(output_list)
 
+  # Implementation idea from: https://github.com/tensorflow/tensorflow/issues/2169
   def unpool_layer2x2(self, x, raveled_argmax, out_shape):
     argmax = self.unravel_argmax(raveled_argmax, tf.to_int64(out_shape))
     output = tf.zeros([out_shape[1], out_shape[2], out_shape[3]])
@@ -153,34 +153,15 @@ class SegNet:
     self.loss = tf.reduce_mean(cross_entropy, name='x_entropy_mean')
     self.train_step = tf.train.AdamOptimizer(self.rate).minimize(self.loss)
 
-  # Reads an image and its corresponding ground truth
-  def read_data(self, training_data):
-
-    # Open image and ground truth
-    image_directory = './datasets/unreal_randomyaw/images/'
-    image_file = random.choice(training_data)
-    image = np.float32(cv2.imread(image_directory + image_file))
-    ground_truth_directory = './datasets/unreal_randomyaw/ground_truths/'
-    ground_truth_file = image_file.replace('pic', 'seg')
-    ground_truth = cv2.imread(ground_truth_directory + ground_truth_file, cv2.IMREAD_GRAYSCALE)
-
-    # Norm to 27 classes, 0-27
-    ground_truth = (ground_truth / 255) * 27
-
-    return image, ground_truth
-
-            
   def train(self, learning_rate=1e-6):
 
-    # Get training data paths
-    training_data = open('./datasets/unreal_randomyaw/train.txt').readlines()
+    dataset = DatasetReader()
     
     # Run once for now
     for i in range(1):
 
-      image, ground_truth = self.read_data(training_data)
+      image, ground_truth = dataset.next_pair()
 
-      # Train
       print('run train step: '+str(i))
       self.train_step.run(session=self.session, 
         feed_dict={self.x: [image], self.y: [ground_truth], self.rate: learning_rate})

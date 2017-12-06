@@ -87,12 +87,12 @@ def convert_image(dirName, fname, counter):
         match_region=match_color(img,key)
         if not (match_region is None):
             res = (np.multiply(res, ~match_region)) + match_region*color_map[key]
-    outfile = '../datasets/unreal_randomyaw/segmentations/seg' + str(counter) + '.png' 
+    outfile = '../datasets/unreal_randomyaw/ground_truths/seg' + str(counter) + '.png' 
     print(outfile)
     cv2.imwrite(outfile,res*8)
 
     image_outfile = '../datasets/unreal_randomyaw/images/pic' + str(counter) + '.png'
-    copyfile(filePath.replace('seg','pic'), outfile) 
+    copyfile(filePath.replace('seg','pic'), image_outfile) 
     # print(check_converted_image('../datasets/unreal_randomyaw/', 'seg' + str(counter) + '.png'))
 
 def check_converted_image(dirName, fname):

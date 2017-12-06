@@ -153,8 +153,8 @@ class SegNet:
     deconv_1_1 = self.deconv_layer(deconv_1_2, [3, 3, 32, 64], 32, 'deconv_1_1')
 
     # Produce class scores
-    preds = self.deconv_layer(deconv_1_1, [1, 1, 27, 32], 27, 'preds')
-    self.logits = tf.reshape(preds, (-1, 27))
+    preds = self.deconv_layer(deconv_1_1, [1, 1, 28, 32], 28, 'preds')
+    self.logits = tf.reshape(preds, (-1, 28))
 
     # Prepare network for training
     cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(

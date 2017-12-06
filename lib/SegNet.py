@@ -67,8 +67,6 @@ class SegNet:
     delta = tf.SparseTensor(indices, values, tf.to_int64(tf.shape(output)))
     return tf.expand_dims(tf.sparse_tensor_to_dense(tf.sparse_reorder(delta)), 0)
         
-
-  # TODO: Add batch normalization
   def conv_layer(self, x, W_shape, b_shape, name, padding='SAME'):
     W = self.weight_variable(W_shape)
     b = self.bias_variable([b_shape])

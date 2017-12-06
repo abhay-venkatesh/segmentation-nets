@@ -6,6 +6,7 @@ from math import ceil
 import cv2
 from utils.DatasetReader import DatasetReader
 from PIL import Image
+import datetime
 
 class SegNet:
   ''' Network described by,
@@ -162,7 +163,8 @@ class SegNet:
     self.train_step = tf.train.AdamOptimizer(self.rate).minimize(self.loss)
 
     # Metrics
-    self.accuracy = tf.contrib.metrics.accuracy(tf.cast(preds, tf.int64), self.y, name='accuracy')
+    predicted_image = tf.argmax(preds, axis=3)
+    self.accuracy = tf.contrib.metrics.accuracy(tf.cast(predicted_image, tf.int64), self.y, name='accuracy')
 
   def train(self, num_iterations=10000, learning_rate=1e-6):
     dataset = DatasetReader()
@@ -187,8 +189,8 @@ class SegNet:
         feed_dict = {self.x: [image], self.y: [ground_truth], self.rate: learning_rate}
         val_loss = self.session.run(self.loss, feed_dict=feed_dict)
         val_accuracy = self.session.run(self.accuracy, feed_dict=feed_dict)
-        print("%s ---> Validation_loss: %g" % (datetime.datetime.now(), valid_loss))
-        print("%s ---> Validation_accuracy: %g" % (datetime.datetime.now(), valid_accuracy))
+        print("%s ---> Validation_loss: %g" % (datetime.datetime.now(), val_loss))
+        print("%s ---> Validation_accuracy: %g" % (datetime.datetime.now(), val_accuracy))
 
         # Save the model variables
         self.saver.save(self.session, self.checkpoint_directory + 'segnet', global_step = i)

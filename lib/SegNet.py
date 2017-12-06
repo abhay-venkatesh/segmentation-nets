@@ -12,10 +12,19 @@ from utils.DatasetReader import DatasetReader
 # and https://arxiv.org/pdf/1511.00561.pdf
 class SegNet:
 
+  self.checkpoint_directory = '../checkpoints/'
+
   def __init__(self):
+
+    # Build the network
     self.build()
+
+    # Begin a TensorFlow session
     self.session = tf.Session()
     self.session.run(tf.global_variables_initializer())
+
+    # Make saving trained weights and biases possible
+    self.saver = tf.train.Saver(max_to_keep = 5, keep_checkpoint_every_n_hours = 1)
 
   def weight_variable(self, shape):
     initial = tf.truncated_normal(shape, stddev=0.1)
@@ -175,11 +184,14 @@ class SegNet:
         print("Step: %d, Train_loss:%g" % (i, train_loss))
 
       # Test against validation dataset for 100 iterations
-      if itr % 100 == 0:
+      if i % 100 == 0:
         image, ground_truth = dataset.next_val_pair()
         feed_dict = {self.x: [image], self.y: [ground_truth], self.rate: learning_rate}
         val_loss = sess.run(self.loss, feed_dict=feed_dict)
         val_accuracy = sess.run(self.accuracy, feed_dict=feed_dict)
         print("%s ---> Validation_loss: %g" % (datetime.datetime.now(), valid_loss))
         print("%s ---> Validation_accuracy: %g" % (datetime.datetime.now(), valid_accuracy))
+
+        # Save the model variables
+        self.saver.save(self.session, self.checkpoint_directory + 'segnet', global_step = i)
         

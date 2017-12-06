@@ -38,13 +38,48 @@ class SegNet:
   def pool_layer(self, x):
     return tf.nn.max_pool_with_argmax(x, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
 
-  def unravel_argmax(self, argmax, shape):
-    output_list = []
-    output_list.append(argmax // (shape[2] * shape[3]))
-    output_list.append(argmax % (shape[2] * shape[3]) // shape[3])
-    return tf.stack(output_list)
-
+  def unravel_argmax(argmax, shape):
+    output_list = [argmax // (shape[2]*shape[3]),
+                   argmax % (shape[2]*shape[3]) // shape[3]]
+    return tf.pack(output_list)
+  
   # Implementation idea from: https://github.com/tensorflow/tensorflow/issues/2169
+  def unpool_layer2x2_batch(bottom, argmax):
+    bottom_shape = tf.shape(bottom)
+    top_shape = [bottom_shape[0], bottom_shape[1]*2, bottom_shape[2]*2, bottom_shape[3]]
+
+    batch_size = top_shape[0]
+    height = top_shape[1]
+    width = top_shape[2]
+    channels = top_shape[3]
+
+    argmax_shape = tf.to_int64([batch_size, height, width, channels])
+    argmax = unravel_argmax(argmax, argmax_shape)
+
+    t1 = tf.to_int64(tf.range(channels))
+    t1 = tf.tile(t1, [batch_size*(width//2)*(height//2)])
+    t1 = tf.reshape(t1, [-1, channels])
+    t1 = tf.transpose(t1, perm=[1, 0])
+    t1 = tf.reshape(t1, [channels, batch_size, height//2, width//2, 1])
+    t1 = tf.transpose(t1, perm=[1, 0, 2, 3, 4])
+
+    t2 = tf.to_int64(tf.range(batch_size))
+    t2 = tf.tile(t2, [channels*(width//2)*(height//2)])
+    t2 = tf.reshape(t2, [-1, batch_size])
+    t2 = tf.transpose(t2, perm=[1, 0])
+    t2 = tf.reshape(t2, [batch_size, channels, height//2, width//2, 1])
+
+    t3 = tf.transpose(argmax, perm=[1, 4, 2, 3, 0])
+
+    t = tf.concat(4, [t2, t3, t1])
+    indices = tf.reshape(t, [(height//2)*(width//2)*channels*batch_size, 4])
+
+    x1 = tf.transpose(bottom, perm=[0, 3, 1, 2])
+    values = tf.reshape(x1, [-1])
+
+    delta = tf.SparseTensor(indices, values, tf.to_int64(top_shape))
+    return tf.sparse_tensor_to_dense(tf.sparse_reorder(delta))
+
   def unpool_layer2x2(self, x, raveled_argmax, out_shape):
     argmax = self.unravel_argmax(raveled_argmax, tf.to_int64(out_shape))
     output = tf.zeros([out_shape[1], out_shape[2], out_shape[3]])

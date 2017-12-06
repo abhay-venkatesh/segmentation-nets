@@ -4,7 +4,6 @@ import cv2
 
 # Helper class to SegNet that handles data reading, conversion and all things related to data 
 class DatasetReader:
-
   self.text_index = 0
 
   def __init__(self):
@@ -13,7 +12,6 @@ class DatasetReader:
     self.test_data = open('./datasets/unreal_randomyaw/test.txt').readlines()
 
   def next_train_pair(self):
-
     # Load image
     image_directory = './datasets/unreal_randomyaw/images/'
     image_file = random.choice(self.training_data)
@@ -28,7 +26,6 @@ class DatasetReader:
     return image, ground_truth
 
   def next_val_pair(self):
-
     # Load image
     image_directory = './datasets/unreal_randomyaw/images/'
     image_file = random.choice(self.validation_data)
@@ -43,7 +40,6 @@ class DatasetReader:
     return image, ground_truth
 
   def next_test_pair(self):
-
     # Load image
     image_directory = './datasets/unreal_randomyaw/images/'
     image_file = self.test_data[self.test_index]

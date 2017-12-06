@@ -7,16 +7,14 @@ import cv2
 from utils.DatasetReader import DatasetReader
 from PIL import Image
 
-# Network described by,
-# https://arxiv.org/pdf/1505.04366v1.pdf
-# and https://arxiv.org/pdf/1505.07293.pdf
-# and https://arxiv.org/pdf/1511.00561.pdf
 class SegNet:
-
+  ''' Network described by,
+  https://arxiv.org/pdf/1505.04366v1.pdf
+  and https://arxiv.org/pdf/1505.07293.pdf
+  and https://arxiv.org/pdf/1511.00561.pdf '''
   self.checkpoint_directory = '../checkpoints/'
 
   def __init__(self):
-
     # Build the network
     self.build()
 
@@ -167,7 +165,6 @@ class SegNet:
     self.accuracy = tf.contrib.metrics.accuracy(preds, self.y, name='accuracy')
 
   def train(self, num_iterations=10000, learning_rate=1e-6):
-
     dataset = DatasetReader()
     
     # Begin Training
@@ -197,10 +194,9 @@ class SegNet:
         self.saver.save(self.session, self.checkpoint_directory + 'segnet', global_step = i)
 
   def test(self, learning_rate=1e-6):
-
     dataset = DatasetReader()
     image, ground_truth = dataset.next_test_pair() 
     feed_dict = {self.x: [image], self.y: [ground_truth], self.rate: learning_rate}
     prediction = self.session(self.logits, feed_dict=feed_dict)
-    print(type(prediction))
-        
+    img = Image.fromarray(prediction, 'L')
+    img.save('prediction.png')

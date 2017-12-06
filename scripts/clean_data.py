@@ -1,6 +1,5 @@
-"""
-Cleans and replaces missing images.
-"""
+""" Cleans and replaces missing images.
+Do not use unless in a hurry or simply testing. """
 
 import os
 from shutil import copyfile

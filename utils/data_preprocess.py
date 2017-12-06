@@ -25,7 +25,7 @@ def match_color(object_mask, target_color, tolerance=3):
         else:
             return None
 
-def new_convert():
+def preprocess():
     directory = '../datasets/unreal_randomyaw/' 
     if not os.path.exists(directory):
         os.makedirs(directory) 
@@ -38,6 +38,7 @@ def new_convert():
 
             if fname == 'seg0.png':
                 convert_image(dirName, fname, counter)
+                counter += 1
 
             # Take multiple views for every 10th image
             '''
@@ -46,7 +47,7 @@ def new_convert():
                 convert_image(dirName, fname, counter)
             '''
 
-        counter += 1
+        
 
 def convert_for_test():
     directory = './converted_data' 
@@ -107,7 +108,7 @@ def check_converted_image(dirName, fname):
     return True
 
 def main():
-    new_convert() 
+    preprocess() 
 
 
 if __name__ == "__main__":

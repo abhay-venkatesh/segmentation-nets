@@ -153,15 +153,33 @@ class SegNet:
     self.loss = tf.reduce_mean(cross_entropy, name='x_entropy_mean')
     self.train_step = tf.train.AdamOptimizer(self.rate).minimize(self.loss)
 
-  def train(self, learning_rate=1e-6):
+    # Metrics
+    self.accuracy = tf.contrib.metrics.accuracy(preds, self.y, name='accuracy')
+
+  def train(self, num_iterations=10000, learning_rate=1e-6):
 
     dataset = DatasetReader()
     
-    # Run once for now
-    for i in range(1):
+    # Begin Training
+    for i in range(num_iterations):
 
-      image, ground_truth = dataset.next_pair()
-
+      # One training step
+      image, ground_truth = dataset.next_train_pair()
+      feed_dict = {self.x: [image], self.y: [ground_truth], self.rate: learning_rate}
       print('run train step: '+str(i))
-      self.train_step.run(session=self.session, 
-        feed_dict={self.x: [image], self.y: [ground_truth], self.rate: learning_rate})
+      self.train_step.run(session=self.session, feed_dict=feed_dict)
+
+      # Print loss every 10 iterations
+      if i % 10 == 0:
+        train_loss = sess.run(self.loss, feed_dict=feed_dict)
+        print("Step: %d, Train_loss:%g" % (i, train_loss))
+
+      # Test against validation dataset for 100 iterations
+      if itr % 100 == 0:
+        image, ground_truth = dataset.next_val_pair()
+        feed_dict = {self.x: [image], self.y: [ground_truth], self.rate: learning_rate}
+        val_loss = sess.run(self.loss, feed_dict=feed_dict)
+        val_accuracy = sess.run(self.accuracy, feed_dict=feed_dict)
+        print("%s ---> Validation_loss: %g" % (datetime.datetime.now(), valid_loss))
+        print("%s ---> Validation_accuracy: %g" % (datetime.datetime.now(), valid_accuracy))
+        

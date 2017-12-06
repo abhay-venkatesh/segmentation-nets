@@ -24,7 +24,7 @@ class SegNet:
 
     # Make saving trained weights and biases possible
     self.saver = tf.train.Saver(max_to_keep = 5, keep_checkpoint_every_n_hours = 1)
-    self.checkpoint_directory = '../checkpoints/'
+    self.checkpoint_directory = './checkpoints/'
 
   def weight_variable(self, shape):
     initial = tf.truncated_normal(shape, stddev=0.1)

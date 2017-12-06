@@ -4,17 +4,17 @@ import cv2
 
 # Helper class to SegNet that handles data reading, conversion and all things related to data 
 class DatasetReader:
-  self.text_index = 0
 
   def __init__(self):
     self.training_data = open('./datasets/unreal_randomyaw/train.txt').readlines()
     self.validation_data = open('./datasets/unreal_randomyaw/val.txt').readlines()
     self.test_data = open('./datasets/unreal_randomyaw/test.txt').readlines()
+    self.text_index = 0
 
   def next_train_pair(self):
     # Load image
     image_directory = './datasets/unreal_randomyaw/images/'
-    image_file = random.choice(self.training_data)
+    image_file = random.choice(self.training_data).rstrip()
     image = np.float32(cv2.imread(image_directory + image_file))
 
     # Load ground truth
@@ -28,7 +28,7 @@ class DatasetReader:
   def next_val_pair(self):
     # Load image
     image_directory = './datasets/unreal_randomyaw/images/'
-    image_file = random.choice(self.validation_data)
+    image_file = random.choice(self.validation_data).rstrip()
     image = np.float32(cv2.imread(image_directory + image_file))
 
     # Load ground truth
@@ -42,7 +42,7 @@ class DatasetReader:
   def next_test_pair(self):
     # Load image
     image_directory = './datasets/unreal_randomyaw/images/'
-    image_file = self.test_data[self.test_index]
+    image_file = self.test_data[self.test_index].rstrip()
     self.test_index += 1
     image = np.float32(cv2.imread(image_directory + image_file))
 
@@ -53,3 +53,9 @@ class DatasetReader:
     ground_truth = ground_truth/8
 
     return image, ground_truth
+
+def main():
+    DatasetReader().next_train_pair()
+
+if __name__ == "__main__":
+    main()

@@ -12,7 +12,6 @@ class SegNet:
   https://arxiv.org/pdf/1505.04366v1.pdf
   and https://arxiv.org/pdf/1505.07293.pdf
   and https://arxiv.org/pdf/1511.00561.pdf '''
-  self.checkpoint_directory = '../checkpoints/'
 
   def __init__(self):
     # Build the network
@@ -24,6 +23,7 @@ class SegNet:
 
     # Make saving trained weights and biases possible
     self.saver = tf.train.Saver(max_to_keep = 5, keep_checkpoint_every_n_hours = 1)
+    self.checkpoint_directory = '../checkpoints/'
 
   def weight_variable(self, shape):
     initial = tf.truncated_normal(shape, stddev=0.1)
@@ -157,12 +157,12 @@ class SegNet:
 
     # Prepare network for training
     cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(
-      labels=tf.reshape(expected, [-1]), logits=logits, name='x_entropy')
+      labels=tf.reshape(expected, [-1]), logits=self.logits, name='x_entropy')
     self.loss = tf.reduce_mean(cross_entropy, name='x_entropy_mean')
     self.train_step = tf.train.AdamOptimizer(self.rate).minimize(self.loss)
 
     # Metrics
-    self.accuracy = tf.contrib.metrics.accuracy(preds, self.y, name='accuracy')
+    self.accuracy = tf.contrib.metrics.accuracy(tf.cast(preds, tf.int64), self.y, name='accuracy')
 
   def train(self, num_iterations=10000, learning_rate=1e-6):
     dataset = DatasetReader()

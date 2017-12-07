@@ -66,6 +66,29 @@ class DatasetReader:
 
     return image, ground_truth
 
+  def next_train_batch(self):
+    images = []
+    ground_truths = []
+
+    for i in range(50):
+      image, ground_truth = self.next_train_pair()
+      images.append(image)
+      ground_truths.append(image)
+
+    return images, ground_truths
+
+  def next_val_batch(self):
+    images = []
+    ground_truths = []
+
+    for i in range(50):
+      image, ground_truth = self.next_val_pair()
+      images.append(image)
+      ground_truths.append(image)
+
+    return images, ground_truths
+
+
 def main():
     DatasetReader().next_train_pair()
 

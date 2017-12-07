@@ -38,11 +38,75 @@ class SegNet:
   def pool_layer(self, x):
     return tf.nn.max_pool_with_argmax(x, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
 
-  def unravel_argmax(self, argmax, shape):
-    output_list = []
-    output_list.append(argmax // (shape[2] * shape[3]))
-    output_list.append(argmax % (shape[2] * shape[3]) // shape[3])
-    return tf.stack(output_list)
+  def unravel_argmax(argmax, shape):
+    output_list = [argmax // (shape[2]*shape[3]),
+                   argmax % (shape[2]*shape[3]) // shape[3]]
+    return tf.pack(output_list)
+  
+  # Implementation idea from: https://github.com/tensorflow/tensorflow/issues/2169
+  def unpool(updates, mask, ksize=[1, 2, 2, 1]):
+    input_shape = updates.get_shape().as_list()
+    #  calculation new shape
+    output_shape = (input_shape[0], input_shape[1] * ksize[1], input_shape[2] * ksize[2], input_shape[3])
+    # calculation indices for batch, height, width and feature maps
+    one_like_mask = tf.ones_like(mask)
+    batch_range = tf.reshape(tf.range(output_shape[0], dtype=tf.int64), shape=[input_shape[0], 1, 1, 1])
+    b = one_like_mask * batch_range
+    y = mask // (output_shape[2] * output_shape[3])
+    x = mask % (output_shape[2] * output_shape[3]) // output_shape[3]
+    feature_range = tf.range(output_shape[3], dtype=tf.int64)
+    f = one_like_mask * feature_range
+    # transpose indices & reshape update values to one dimension
+    updates_size = tf.size(updates)
+    indices = tf.transpose(tf.reshape(tf.stack([b, y, x, f]), [4, updates_size]))
+    values = tf.reshape(updates, [updates_size])
+    ret = tf.scatter_nd(indices, values, output_shape)
+    return ret
+  
+  def unpool_layer2x2_batch(self, x, argmax):
+    '''
+    Args:
+        x: 4D tensor of shape [batch_size x height x width x channels]
+        argmax: A Tensor of type Targmax. 4-D. The flattened indices of the max
+        values chosen for each output.
+    Return:
+        4D output tensor of shape [batch_size x 2*height x 2*width x channels]
+    '''
+    x_shape = tf.shape(x)
+    out_shape = [x_shape[0], x_shape[1]*2, x_shape[2]*2, x_shape[3]]
+
+    batch_size = out_shape[0]
+    height = out_shape[1]
+    width = out_shape[2]
+    channels = out_shape[3]
+
+    argmax_shape = tf.to_int64([batch_size, height, width, channels])
+    argmax = unravel_argmax(argmax, argmax_shape)
+
+    t1 = tf.to_int64(tf.range(channels))
+    t1 = tf.tile(t1, [batch_size*(width//2)*(height//2)])
+    t1 = tf.reshape(t1, [-1, channels])
+    t1 = tf.transpose(t1, perm=[1, 0])
+    t1 = tf.reshape(t1, [channels, batch_size, height//2, width//2, 1])
+    t1 = tf.transpose(t1, perm=[1, 0, 2, 3, 4])
+
+    t2 = tf.to_int64(tf.range(batch_size))
+    t2 = tf.tile(t2, [channels*(width//2)*(height//2)])
+    t2 = tf.reshape(t2, [-1, batch_size])
+    t2 = tf.transpose(t2, perm=[1, 0])
+    t2 = tf.reshape(t2, [batch_size, channels, height//2, width//2, 1])
+
+    t3 = tf.transpose(argmax, perm=[1, 4, 2, 3, 0])
+
+    t = tf.concat([t2, t3, t1], 4)
+    indices = tf.reshape(t, [(height//2)*(width//2)*channels*batch_size, 4])
+
+    x1 = tf.transpose(x, perm=[0, 3, 1, 2])
+    values = tf.reshape(x1, [-1])
+
+    delta = tf.SparseTensor(indices, values, tf.to_int64(out_shape))
+    return tf.sparse_tensor_to_dense(tf.sparse_reorder(delta))
+>>>>>>> bc4b417c8dc9d1d7b12a97418507f8fbdd3b14ac
 
   def unpool_layer2x2(self, x, raveled_argmax, out_shape):
     ''' Implementation idea from: 

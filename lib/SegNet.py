@@ -186,6 +186,7 @@ class SegNet:
 
     # Metrics
     predicted_image = tf.argmax(preds, axis=3)
+    self.accuracy = tf.contrib.metrics.accuracy(tf.cast(predicted_image, tf.int64), self.y, name='accuracy')
 
   def restore_session(self):
     global_step = 0

@@ -44,8 +44,10 @@ class SegNet:
     output_list.append(argmax % (shape[2] * shape[3]) // shape[3])
     return tf.stack(output_list)
 
-  # Implementation idea from: https://github.com/tensorflow/tensorflow/issues/2169
   def unpool_layer2x2(self, x, raveled_argmax, out_shape):
+    ''' Implementation idea from: 
+        https://github.com/tensorflow/tensorflow/issues/2169 '''
+
     argmax = self.unravel_argmax(raveled_argmax, tf.to_int64(out_shape))
     output = tf.zeros([out_shape[1], out_shape[2], out_shape[3]])
     height = tf.shape(output)[0]

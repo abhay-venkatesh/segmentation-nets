@@ -70,7 +70,7 @@ class DatasetReader:
     images = []
     ground_truths = []
 
-    for i in range(50):
+    for i in range(2):
       image, ground_truth = self.next_train_pair()
       images.append(image)
       ground_truths.append(ground_truth)
@@ -81,7 +81,7 @@ class DatasetReader:
     images = []
     ground_truths = []
 
-    for i in range(50):
+    for i in range(2):
       image, ground_truth = self.next_val_pair()
       images.append(image)
       ground_truths.append(ground_truth)

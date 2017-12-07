@@ -63,11 +63,11 @@ class SegNet:
     ret = tf.scatter_nd(indices, values, output_shape)
     return ret
 
-  def unravel_argmax(argmax, shape):
-    output_list = [argmax // (shape[2]*shape[3]),
-                   argmax % (shape[2]*shape[3]) // shape[3]]
-    return tf.pack(output_list)
-  
+  def unravel_argmax(self, argmax, shape):
+    output_list = []
+    output_list.append(argmax // (shape[2] * shape[3]))
+    output_list.append(argmax % (shape[2] * shape[3]) // shape[3])
+    return tf.stack(output_list)
   
   def unpool_layer2x2_batch(self, x, argmax):
     '''
@@ -87,7 +87,7 @@ class SegNet:
     channels = out_shape[3]
 
     argmax_shape = tf.to_int64([batch_size, height, width, channels])
-    argmax = unravel_argmax(argmax, argmax_shape)
+    argmax = self.unravel_argmax(argmax, argmax_shape)
 
     t1 = tf.to_int64(tf.range(channels))
     t1 = tf.tile(t1, [batch_size*(width//2)*(height//2)])
@@ -388,14 +388,14 @@ class SegNet:
       self.train_step.run(session=self.session, feed_dict=feed_dict)
 
       # Print loss every 10 iterations
-        if i % 10 == 0:
-          train_loss = self.session.run(self.loss, feed_dict=feed_dict)
-          print("Step: %d, Train_loss:%g" % (i, train_loss))
+      if i % 10 == 0:
+        train_loss = self.session.run(self.loss, feed_dict=feed_dict)
+        print("Step: %d, Train_loss:%g" % (i, train_loss))
 
-    def test(self, learning_rate=1e-6):
-      dataset = DatasetReader()
-      image, ground_truth = dataset.next_test_pair() 
-      feed_dict = {self.x: [image], self.y: [ground_truth], self.rate: learning_rate}
-      prediction = self.session(self.logits, feed_dict=feed_dict)
-      img = Image.fromarray(prediction, 'L')
-      img.save('prediction.png')
+  def test(self, learning_rate=1e-6):
+    dataset = DatasetReader()
+    image, ground_truth = dataset.next_test_pair() 
+    feed_dict = {self.x: [image], self.y: [ground_truth], self.rate: learning_rate}
+    prediction = self.session(self.logits, feed_dict=feed_dict)
+    img = Image.fromarray(prediction, 'L')
+    img.save('prediction.png')

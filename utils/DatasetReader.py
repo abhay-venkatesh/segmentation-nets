@@ -73,7 +73,7 @@ class DatasetReader:
     for i in range(50):
       image, ground_truth = self.next_train_pair()
       images.append(image)
-      ground_truths.append(image)
+      ground_truths.append(ground_truth)
 
     return images, ground_truths
 
@@ -84,7 +84,7 @@ class DatasetReader:
     for i in range(50):
       image, ground_truth = self.next_val_pair()
       images.append(image)
-      ground_truths.append(image)
+      ground_truths.append(ground_truth)
 
     return images, ground_truths
 

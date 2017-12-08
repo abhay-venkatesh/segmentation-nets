@@ -9,7 +9,7 @@ from PIL import Image
 import datetime
 import os
 
-class SegNet:
+class BatchDeconvNet:
   ''' Network described by,
   https://arxiv.org/pdf/1505.04366v1.pdf
   and https://arxiv.org/pdf/1505.07293.pdf
@@ -39,26 +39,6 @@ class SegNet:
     return tf.nn.max_pool_with_argmax(x, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
 
   # Implementation idea from: https://github.com/tensorflow/tensorflow/issues/2169
-  def unpool(self, pool, ind, ksize=(1, 2, 2, 1), scope='unpool'):
-    """ Unpooling layer after max_pool_with_argmax.
-      Args:
-        pool: max pooled output tensor
-        ind: argmax indices (produced by tf.nn.max_pool_with_argmax)
-        ksize: ksize is the same as for the pool
-      Return:
-        unpooled: unpooling tensor """
-    with tf.variable_scope(scope):
-      pooled_shape = tf.shape(pool) 
-      flatten_ind = tf.reshape(ind, (pooled_shape[0], pooled_shape[1] * pooled_shape[2] * pooled_shape[3]))
-      # sparse indices to dense ones_like matrics
-      one_hot_ind = tf.one_hot(flatten_ind,  pooled_shape[1] * ksize[1] * pooled_shape[2] * ksize[2] * pooled_shape[3], on_value=1., off_value=0., axis=-1)
-      one_hot_ind = tf.reduce_sum(one_hot_ind, axis=1)
-      one_like_mask = tf.reshape(one_hot_ind, (pooled_shape[0], pooled_shape[1] * ksize[1], pooled_shape[2] * ksize[2], pooled_shape[3]))
-      # resize input array to the output size by nearest neighbor
-      img = tf.image.resize_nearest_neighbor(pool, [pooled_shape[1] * ksize[1], pooled_shape[2] * ksize[2]])
-      unpooled = tf.multiply(img, tf.cast(one_like_mask, img.dtype))
-      return unpooled
-
   def unravel_argmax(self, argmax, shape):
     output_list = []
     output_list.append(argmax // (shape[2] * shape[3]))
@@ -165,30 +145,30 @@ class SegNet:
     deconv_fc_6 = self.deconv_layer(fc_7, [7, 7, 512, 4096], 512, 'fc6_deconv')
 
     # First decoder
-    unpool_5 = self.unpool(deconv_fc_6, pool_5_argmax)
+    unpool_5 = self.unpool_layer2x2_batch(deconv_fc_6, pool_5_argmax)
     deconv_5_3 = self.deconv_layer(unpool_5, [3, 3, 512, 512], 512, 'deconv_5_3')
     deconv_5_2 = self.deconv_layer(deconv_5_3, [3, 3, 512, 512], 512, 'deconv_5_2')
     deconv_5_1 = self.deconv_layer(deconv_5_2, [3, 3, 512, 512], 512, 'deconv_5_1')
 
     # Second decoder
-    unpool_4 = self.unpool(deconv_5_1, pool_4_argmax)
+    unpool_4 = self.unpool_layer2x2_batch(deconv_5_1, pool_4_argmax)
     deconv_4_3 = self.deconv_layer(unpool_4, [3, 3, 512, 512], 512, 'deconv_4_3')
     deconv_4_2 = self.deconv_layer(deconv_4_3, [3, 3, 512, 512], 512, 'deconv_4_2')
     deconv_4_1 = self.deconv_layer(deconv_4_2, [3, 3, 256, 512], 256, 'deconv_4_1')
 
     # Third decoder
-    unpool_3 = self.unpool(deconv_4_1, pool_3_argmax)
+    unpool_3 = self.unpool_layer2x2_batch(deconv_4_1, pool_3_argmax)
     deconv_3_3 = self.deconv_layer(unpool_3, [3, 3, 256, 256], 256, 'deconv_3_3')
     deconv_3_2 = self.deconv_layer(deconv_3_3, [3, 3, 256, 256], 256, 'deconv_3_2')
     deconv_3_1 = self.deconv_layer(deconv_3_2, [3, 3, 128, 256], 128, 'deconv_3_1')
 
     # Fourth decoder
-    unpool_2 = self.unpool(deconv_3_1, pool_2_argmax)
+    unpool_2 = self.unpool_layer2x2_batch(deconv_3_1, pool_2_argmax)
     deconv_2_2 = self.deconv_layer(unpool_2, [3, 3, 128, 128], 128, 'deconv_2_2')
     deconv_2_1 = self.deconv_layer(deconv_2_2, [3, 3, 64, 128], 64, 'deconv_2_1')
 
     # Fifth decoder
-    unpool_1 = self.unpool(deconv_2_1, pool_1_argmax)
+    unpool_1 = self.unpool_layer2x2_batch(deconv_2_1, pool_1_argmax)
     deconv_1_2 = self.deconv_layer(unpool_1, [3, 3, 64, 64], 64, 'deconv_1_2')
     deconv_1_1 = self.deconv_layer(deconv_1_2, [3, 3, 32, 64], 32, 'deconv_1_1')
 

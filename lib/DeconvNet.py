@@ -9,7 +9,7 @@ from PIL import Image
 import datetime
 import os
 
-class SegNet:
+class DeconvNet:
   ''' Network described by,
   https://arxiv.org/pdf/1505.04366v1.pdf
   and https://arxiv.org/pdf/1505.07293.pdf
@@ -139,8 +139,15 @@ class SegNet:
     conv_5_3 = self.conv_layer(conv_5_2, [3, 3, 512, 512], 512, 'conv_5_3')
     pool_5, pool_5_argmax = self.pool_layer(conv_5_3)
 
+    # Fully connected layers between the encoder and decoder
+    fc_6 = self.conv_layer(pool_5, [7, 7, 512, 4096], 4096, 'fc_6')
+    fc_7 = self.conv_layer(fc_6, [1, 1, 4096, 4096], 4096, 'fc_7')
+
+    # Single deconv before beginning decoding
+    deconv_fc_6 = self.deconv_layer(fc_7, [7, 7, 512, 4096], 512, 'fc6_deconv')
+
     # First decoder
-    unpool_5 = self.unpool_layer2x2(pool_5, pool_5_argmax, tf.shape(conv_5_3))
+    unpool_5 = self.unpool_layer2x2(deconv_fc_6, pool_5_argmax, tf.shape(conv_5_3))
     deconv_5_3 = self.deconv_layer(unpool_5, [3, 3, 512, 512], 512, 'deconv_5_3')
     deconv_5_2 = self.deconv_layer(deconv_5_3, [3, 3, 512, 512], 512, 'deconv_5_2')
     deconv_5_1 = self.deconv_layer(deconv_5_2, [3, 3, 512, 512], 512, 'deconv_5_1')

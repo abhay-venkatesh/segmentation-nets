@@ -176,6 +176,7 @@ class BatchSegNet:
   def build(self):
     # Declare placeholders
     self.x = tf.placeholder(tf.float32, shape=(None, None, None, 3))
+    # self.y dimensions = BATCH_SIZE * WIDTH * HEIGHT
     self.y = tf.placeholder(tf.int64, shape=(None, None, None))
     expected = tf.expand_dims(self.y, -1)
     self.rate = tf.placeholder(tf.float32, shape=[])
@@ -237,6 +238,7 @@ class BatchSegNet:
     deconv_1_1 = self.deconv_layer(deconv_1_2, [3, 3, 32, 64], 32, 'deconv1_1')
 
     # Produce class scores
+    # score_1 dimensions: BATCH_SIZE * WIDTH * HEIGHT * NUMBER_OF_CLASSES
     score_1 = self.deconv_layer(deconv_1_1, [1, 1, 28, 32], 28, 'score_1')
     logits = tf.reshape(score_1, (-1, 28))
 
@@ -247,8 +249,9 @@ class BatchSegNet:
     self.train_step = tf.train.AdamOptimizer(self.rate).minimize(self.loss)
 
     # Metrics
-    self.prediction = tf.argmax(tf.reshape(tf.nn.softmax(logits), tf.shape(score_1)), axis=3)
-    self.accuracy = tf.reduce_sum(tf.pow(self.prediction - tf.squeeze(expected), 2))
+    print(tf.shape(logits))
+    self.prediction = tf.argmax(score_1, axis=3, name="prediction")
+    self.accuracy = tf.contrib.metrics.accuracy(self.prediction, self.y, name='accuracy')
 
   def restore_session(self):
     global_step = 0
@@ -275,7 +278,7 @@ class BatchSegNet:
 
     # Count number of items trained on
     count = 0
-    count += (current_step * 5)
+    count += (current_step * batch_size)
 
     # Begin Training
     for i in range(current_step, num_iterations):
@@ -283,7 +286,7 @@ class BatchSegNet:
       # One training step
       images, ground_truths = dataset.next_train_batch(batch_size)
       feed_dict = {self.x: images, self.y: ground_truths, self.rate: learning_rate}
-      print('run train step: '+str(i))
+      print('run train step: ' + str(i))
       self.train_step.run(session=self.session, feed_dict=feed_dict)
 
       # Print loss every 10 iterations

@@ -1,4 +1,3 @@
-# Import modules for building the network
 import tensorflow as tf
 import numpy as np
 import scipy.io
@@ -7,12 +6,11 @@ import cv2
 from utils.DatasetReader import DatasetReader
 from PIL import Image
 import datetime
+import os
 
 class SegNet:
   ''' Network described by,
-  https://arxiv.org/pdf/1505.04366v1.pdf
-  and https://arxiv.org/pdf/1505.07293.pdf
-  and https://arxiv.org/pdf/1511.00561.pdf '''
+  https://arxiv.org/pdf/1511.00561.pdf '''
 
   def load_vgg_weights(self):
     """ Use the VGG model trained on
@@ -86,7 +84,6 @@ class SegNet:
   def pool_layer(self, x):
     return tf.nn.max_pool_with_argmax(x, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
 
-  # Implementation idea from: https://github.com/tensorflow/tensorflow/issues/2169
   def unpool(self, pool, ind, ksize=(1, 2, 2, 1), scope='unpool'):
     """ Unpooling layer after max_pool_with_argmax.
       Args:
@@ -94,7 +91,10 @@ class SegNet:
         ind: argmax indices (produced by tf.nn.max_pool_with_argmax)
         ksize: ksize is the same as for the pool
       Return:
-        unpooled: unpooling tensor """
+        unpooled: unpooling tensor
+      Footnote:
+        Implementation idea from: https://github.com/tensorflow/tensorflow/issues/2169
+    """
     with tf.variable_scope(scope):
       pooled_shape = tf.shape(pool) 
       flatten_ind = tf.reshape(ind, (pooled_shape[0], pooled_shape[1] * pooled_shape[2] * pooled_shape[3]))

@@ -286,6 +286,18 @@ class BatchSegNet:
         train_loss = self.session.run(self.loss, feed_dict=feed_dict)
         print("Step: %d, Train_loss:%g" % (i, train_loss))
 
+      # Run against validation dataset for 100 iterations
+      if i % 100 == 0:
+        images, ground_truths = dataset.next_val_batch()
+        feed_dict = {self.x: images, self.y: ground_truths, self.rate: learning_rate}
+        val_loss = self.session.run(self.loss, feed_dict=feed_dict)
+        val_accuracy = self.session.run(self.accuracy, feed_dict=feed_dict)
+        print("%s ---> Validation_loss: %g" % (datetime.datetime.now(), val_loss))
+        print("%s ---> Validation_accuracy: %g" % (datetime.datetime.now(), val_accuracy))
+
+        # Save the model variables
+        self.saver.save(self.session, self.checkpoint_directory + 'segnet', global_step = i)
+
   def test(self, learning_rate=1e-6):
     dataset = DatasetReader()
     image, ground_truth = dataset.next_test_pair() 

@@ -237,18 +237,18 @@ class BatchSegNet:
     deconv_1_1 = self.deconv_layer(deconv_1_2, [3, 3, 32, 64], 32, 'deconv1_1')
 
     # Produce class scores
-    preds = self.deconv_layer(deconv_1_1, [1, 1, 28, 32], 28, 'preds')
-    self.logits = tf.reshape(preds, (-1, 28))
+    score_1 = self.deconv_layer(deconv_1_1, [1, 1, 28, 32], 28, 'score_1')
+    logits = tf.reshape(score_1, (-1, 28))
 
     # Prepare network for training
     cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(
-      labels=tf.reshape(expected, [-1]), logits=self.logits, name='x_entropy')
+      labels=tf.reshape(expected, [-1]), logits=logits, name='x_entropy')
     self.loss = tf.reduce_mean(cross_entropy, name='x_entropy_mean')
     self.train_step = tf.train.AdamOptimizer(self.rate).minimize(self.loss)
 
     # Metrics
-    predicted_image = tf.argmax(preds, axis=3)
-    self.accuracy = tf.contrib.metrics.accuracy(tf.cast(predicted_image, tf.int64), self.y, name='accuracy')
+    self.prediction = tf.argmax(tf.reshape(tf.nn.softmax(logits), tf.shape(score_1)), axis=3)
+    self.accuracy = tf.reduce_sum(tf.pow(self.prediction - tf.squeeze(expected), 2))
 
   def restore_session(self):
     global_step = 0
@@ -302,13 +302,3 @@ class BatchSegNet:
       count += batch_size
       if count % 5000 == 0:
         print("---- COMPLETED " + str(count/5000) + " EPOCH(S) ----")
-
-
-
-  def test(self, learning_rate=1e-6):
-    dataset = DatasetReader()
-    image, ground_truth = dataset.next_test_pair() 
-    feed_dict = {self.x: [image], self.y: [ground_truth], self.rate: learning_rate}
-    prediction = self.session(self.logits, feed_dict=feed_dict)
-    img = Image.fromarray(prediction, 'L')
-    img.save('prediction.png')

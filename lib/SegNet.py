@@ -7,7 +7,6 @@ import cv2
 from utils.DatasetReader import DatasetReader
 from PIL import Image
 import datetime
-import os
 
 class SegNet:
   ''' Network described by,
@@ -16,8 +15,19 @@ class SegNet:
   and https://arxiv.org/pdf/1511.00561.pdf '''
 
   def load_vgg_weights(self):
-    vgg_path = "models/imagenet-vgg-verydeep-19.mat"
-    vgg_mat = scipy.io.loadmat(vgg_path)
+    """ Use the VGG model trained on
+      imagent dataset as a starting point for training """
+
+    # Download model if not existing
+    # TODO: wget does not work for windows
+    try:
+      vgg_path = "models/imagenet-vgg-verydeep-19.mat"
+      vgg_mat = scipy.io.loadmat(vgg_path)
+    except (OSError, IOError) as e:
+      import wget
+      vgg_url = "http://www.vlfeat.org/matconvnet/models/beta16/imagenet-vgg-verydeep-19.mat"
+      wget.download(vgg_url, out='./models/imagenet-vgg-verydeep-19.mat')
+
     self.vgg_params = np.squeeze(vgg_mat['layers'])
     self.layers = ('conv1_1', 'relu1_1', 'conv1_2', 'relu1_2', 'pool1',
             'conv2_1', 'relu2_1', 'conv2_2', 'relu2_2', 'pool2',
@@ -44,6 +54,17 @@ class SegNet:
     self.checkpoint_directory = './checkpoints/'
 
   def vgg_weight_and_bias(self, name, W_shape, b_shape):
+    """ 
+      Initializes weights and biases to the pre-trained VGG model.
+      
+      Args:
+        name: name of the layer for which you want to initialize weights
+        W_shape: shape of weights tensor expected
+        b_shape: shape of bias tensor expected
+      returns:
+        w_var: Initialized weight variable
+        b_var: Initialized bias variable
+    """
     if name not in self.layers:
       raise KeyError("Layer missing in VGG model or mispelled. ")
     else:

@@ -275,7 +275,7 @@ class BatchSegNet:
 
     # Count number of items trained on
     count = 0
-    count += (current_step * 5)
+    count += (current_step * batch_size)
 
     # Begin Training
     for i in range(current_step, num_iterations):

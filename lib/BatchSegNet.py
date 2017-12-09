@@ -249,7 +249,6 @@ class BatchSegNet:
     self.train_step = tf.train.AdamOptimizer(self.rate).minimize(self.loss)
 
     # Metrics
-    print(tf.shape(logits))
     self.prediction = tf.argmax(score_1, axis=3, name="prediction")
     self.accuracy = tf.contrib.metrics.accuracy(self.prediction, self.y, name='accuracy')
 

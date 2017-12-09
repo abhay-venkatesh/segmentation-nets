@@ -9,6 +9,8 @@ import datetime
 import os
 
 class FCN:
+  """ TODO: This model is a work in progress.
+  """
 
   def load_vgg_weights(self):
     """ Use the VGG model trained on

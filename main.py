@@ -5,7 +5,7 @@ from lib.BatchSegNet import BatchSegNet
 
 def main():
   net = BatchSegNet()
-  net.train()
+  net.train(num_iterations=20000)
 
 if __name__ == "__main__":
   main()

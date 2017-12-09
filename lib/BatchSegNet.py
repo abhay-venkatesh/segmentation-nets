@@ -79,6 +79,35 @@ class BatchSegNet:
   def pool_layer(self, x):
     return tf.nn.max_pool_with_argmax(x, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
 
+  def unpool(self, pool, ind, ksize=[1, 2, 2, 1], scope='unpool'):
+    """
+       Unpooling layer after max_pool_with_argmax.
+       Args:
+           pool:   max pooled output tensor
+           ind:      argmax indices
+           ksize:     ksize is the same as for the pool
+       Return:
+           unpool:    unpooling tensor
+    """
+    with tf.variable_scope(scope):
+      input_shape =  tf.shape(pool)
+      output_shape = [input_shape[0], input_shape[1] * ksize[1], input_shape[2] * ksize[2], input_shape[3]]
+
+      flat_input_size = tf.cumprod(input_shape)[-1]
+      flat_output_shape = tf.stack([output_shape[0], output_shape[1] * output_shape[2] * output_shape[3]])
+
+      pool_ = tf.reshape(pool, tf.stack([flat_input_size]))
+      batch_range = tf.reshape(tf.range(tf.cast(output_shape[0], tf.int64), dtype=ind.dtype), 
+                                        shape=tf.stack([input_shape[0], 1, 1, 1]))
+      b = tf.ones_like(ind) * batch_range
+      b = tf.reshape(b, tf.stack([flat_input_size, 1]))
+      ind_ = tf.reshape(ind, tf.stack([flat_input_size, 1]))
+      ind_ = tf.concat([b, ind_], 1)
+
+      ret = tf.scatter_nd(ind_, pool_, shape=tf.cast(flat_output_shape, tf.int64))
+      ret = tf.reshape(ret, tf.stack(output_shape))
+      return ret
+
   # Implementation idea from: https://github.com/tensorflow/tensorflow/issues/2169
   def unravel_argmax(self, argmax, shape):
     output_list = []
@@ -180,30 +209,30 @@ class BatchSegNet:
     pool_5, pool_5_argmax = self.pool_layer(conv_5_3)
 
     # First decoder
-    unpool_5 = self.unpool_layer2x2_batch(pool_5, pool_5_argmax)
+    unpool_5 = self.unpool(pool_5, pool_5_argmax)
     deconv_5_3 = self.deconv_layer(unpool_5, [3, 3, 512, 512], 512, 'deconv5_3')
     deconv_5_2 = self.deconv_layer(deconv_5_3, [3, 3, 512, 512], 512, 'deconv5_2')
     deconv_5_1 = self.deconv_layer(deconv_5_2, [3, 3, 512, 512], 512, 'deconv5_1')
 
     # Second decoder
-    unpool_4 = self.unpool_layer2x2_batch(deconv_5_1, pool_4_argmax)
+    unpool_4 = self.unpool(deconv_5_1, pool_4_argmax)
     deconv_4_3 = self.deconv_layer(unpool_4, [3, 3, 512, 512], 512, 'deconv4_3')
     deconv_4_2 = self.deconv_layer(deconv_4_3, [3, 3, 512, 512], 512, 'deconv4_2')
     deconv_4_1 = self.deconv_layer(deconv_4_2, [3, 3, 256, 512], 256, 'deconv4_1')
 
     # Third decoder
-    unpool_3 = self.unpool_layer2x2_batch(deconv_4_1, pool_3_argmax)
+    unpool_3 = self.unpool(deconv_4_1, pool_3_argmax)
     deconv_3_3 = self.deconv_layer(unpool_3, [3, 3, 256, 256], 256, 'deconv3_3')
     deconv_3_2 = self.deconv_layer(deconv_3_3, [3, 3, 256, 256], 256, 'deconv3_2')
     deconv_3_1 = self.deconv_layer(deconv_3_2, [3, 3, 128, 256], 128, 'deconv3_1')
 
     # Fourth decoder
-    unpool_2 = self.unpool_layer2x2_batch(deconv_3_1, pool_2_argmax)
+    unpool_2 = self.unpool(deconv_3_1, pool_2_argmax)
     deconv_2_2 = self.deconv_layer(unpool_2, [3, 3, 128, 128], 128, 'deconv2_2')
     deconv_2_1 = self.deconv_layer(deconv_2_2, [3, 3, 64, 128], 64, 'deconv2_1')
 
     # Fifth decoder
-    unpool_1 = self.unpool_layer2x2_batch(deconv_2_1, pool_1_argmax)
+    unpool_1 = self.unpool(deconv_2_1, pool_1_argmax)
     deconv_1_2 = self.deconv_layer(unpool_1, [3, 3, 64, 64], 64, 'deconv1_2')
     deconv_1_1 = self.deconv_layer(deconv_1_2, [3, 3, 32, 64], 32, 'deconv1_1')
 

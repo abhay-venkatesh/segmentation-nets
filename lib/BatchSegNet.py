@@ -273,7 +273,7 @@ class BatchSegNet:
     dataset = DatasetReader()
     
     # Begin Training
-    count = 0
+    count += current_step
     for i in range(current_step, num_iterations):
 
       # One training step

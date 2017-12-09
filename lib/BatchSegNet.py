@@ -283,7 +283,7 @@ class BatchSegNet:
       # One training step
       images, ground_truths = dataset.next_train_batch(batch_size)
       feed_dict = {self.x: images, self.y: ground_truths, self.rate: learning_rate}
-      print('run train step: '+str(i))
+      print('run train step: ' + str(i))
       self.train_step.run(session=self.session, feed_dict=feed_dict)
 
       # Print loss every 10 iterations

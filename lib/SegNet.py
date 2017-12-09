@@ -18,6 +18,7 @@ class SegNet:
 
     # Download model if not existing
     # TODO: wget does not work for windows
+    # TODO: Doesn't work on linux either
     try:
       vgg_path = "models/imagenet-vgg-verydeep-19.mat"
       vgg_mat = scipy.io.loadmat(vgg_path)

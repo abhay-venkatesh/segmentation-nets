@@ -266,17 +266,18 @@ class BatchSegNet:
     return global_step
 
   
-  def train(self, num_iterations=10000, learning_rate=1e-6):
+  def train(self, num_iterations=10000, learning_rate=1e-6, batch_size=5):
     # Restore previous session if exists
     current_step = self.restore_session()
 
     dataset = DatasetReader()
     
     # Begin Training
+    count = 0
     for i in range(current_step, num_iterations):
 
       # One training step
-      images, ground_truths = dataset.next_train_batch()
+      images, ground_truths = dataset.next_train_batch(batch_size)
       feed_dict = {self.x: images, self.y: ground_truths, self.rate: learning_rate}
       print('run train step: '+str(i))
       self.train_step.run(session=self.session, feed_dict=feed_dict)
@@ -288,7 +289,7 @@ class BatchSegNet:
 
       # Run against validation dataset for 100 iterations
       if i % 100 == 0:
-        images, ground_truths = dataset.next_val_batch()
+        images, ground_truths = dataset.next_val_batch(batch_size)
         feed_dict = {self.x: images, self.y: ground_truths, self.rate: learning_rate}
         val_loss = self.session.run(self.loss, feed_dict=feed_dict)
         val_accuracy = self.session.run(self.accuracy, feed_dict=feed_dict)
@@ -297,6 +298,12 @@ class BatchSegNet:
 
         # Save the model variables
         self.saver.save(self.session, self.checkpoint_directory + 'segnet', global_step = i)
+
+      count += batch_size
+      if count % 5000 == 0:
+        print("---- COMPLETED " + str(count/5000) + " EPOCH(S) ----")
+
+
 
   def test(self, learning_rate=1e-6):
     dataset = DatasetReader()

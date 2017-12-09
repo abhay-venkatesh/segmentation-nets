@@ -274,6 +274,7 @@ class BatchSegNet:
     
 
     # Count number of items trained on
+    count = 0
     count += (current_step * 5)
 
     # Begin Training

@@ -40,7 +40,8 @@ class BatchSegNet:
     self.build()
 
     # Begin a TensorFlow session
-    self.session = tf.Session()
+    config = tf.ConfigProto(allow_soft_placement=True)
+    self.session = tf.Session(config=config)
     self.session.run(tf.global_variables_initializer())
 
     # Make saving trained weights and biases possible
@@ -175,83 +176,84 @@ class BatchSegNet:
     return tf.nn.conv2d_transpose(x, W, out_shape, [1, 1, 1, 1], padding=padding) + b
 
   def build(self):
-    # Declare placeholders
-    self.x = tf.placeholder(tf.float32, shape=(None, None, None, 3))
-    # self.y dimensions = BATCH_SIZE * WIDTH * HEIGHT
-    self.y = tf.placeholder(tf.int64, shape=(None, None, None))
-    expected = tf.expand_dims(self.y, -1)
-    self.rate = tf.placeholder(tf.float32, shape=[])
+    with tf.device('/gpu:0'):
+      # Declare placeholders
+      self.x = tf.placeholder(tf.float32, shape=(None, None, None, 3))
+      # self.y dimensions = BATCH_SIZE * WIDTH * HEIGHT
+      self.y = tf.placeholder(tf.int64, shape=(None, None, None))
+      expected = tf.expand_dims(self.y, -1)
+      self.rate = tf.placeholder(tf.float32, shape=[])
 
-    # First encoder
-    conv_1_1 = self.conv_layer(self.x, [3, 3, 3, 64], 64, 'conv1_1')
-    conv_1_2 = self.conv_layer(conv_1_1, [3, 3, 64, 64], 64, 'conv1_2')
-    pool_1, pool_1_argmax = self.pool_layer(conv_1_2)
+      # First encoder
+      conv_1_1 = self.conv_layer(self.x, [3, 3, 3, 64], 64, 'conv1_1')
+      conv_1_2 = self.conv_layer(conv_1_1, [3, 3, 64, 64], 64, 'conv1_2')
+      pool_1, pool_1_argmax = self.pool_layer(conv_1_2)
 
-    # Second encoder
-    conv_2_1 = self.conv_layer(pool_1, [3, 3, 64, 128], 128, 'conv2_1')
-    conv_2_2 = self.conv_layer(conv_2_1, [3, 3, 128, 128], 128, 'conv2_2')
-    pool_2, pool_2_argmax = self.pool_layer(conv_2_2)
+      # Second encoder
+      conv_2_1 = self.conv_layer(pool_1, [3, 3, 64, 128], 128, 'conv2_1')
+      conv_2_2 = self.conv_layer(conv_2_1, [3, 3, 128, 128], 128, 'conv2_2')
+      pool_2, pool_2_argmax = self.pool_layer(conv_2_2)
 
-    # Third encoder
-    conv_3_1 = self.conv_layer(pool_2, [3, 3, 128, 256], 256, 'conv3_1')
-    conv_3_2 = self.conv_layer(conv_3_1, [3, 3, 256, 256], 256, 'conv3_2')
-    conv_3_3 = self.conv_layer(conv_3_2, [3, 3, 256, 256], 256, 'conv3_3')
-    pool_3, pool_3_argmax = self.pool_layer(conv_3_3)
+      # Third encoder
+      conv_3_1 = self.conv_layer(pool_2, [3, 3, 128, 256], 256, 'conv3_1')
+      conv_3_2 = self.conv_layer(conv_3_1, [3, 3, 256, 256], 256, 'conv3_2')
+      conv_3_3 = self.conv_layer(conv_3_2, [3, 3, 256, 256], 256, 'conv3_3')
+      pool_3, pool_3_argmax = self.pool_layer(conv_3_3)
 
-    # Fourth encoder
-    conv_4_1 = self.conv_layer(pool_3, [3, 3, 256, 512], 512, 'conv4_1')
-    conv_4_2 = self.conv_layer(conv_4_1, [3, 3, 512, 512], 512, 'conv4_2')
-    conv_4_3 = self.conv_layer(conv_4_2, [3, 3, 512, 512], 512, 'conv4_3')
-    pool_4, pool_4_argmax = self.pool_layer(conv_4_3)
+      # Fourth encoder
+      conv_4_1 = self.conv_layer(pool_3, [3, 3, 256, 512], 512, 'conv4_1')
+      conv_4_2 = self.conv_layer(conv_4_1, [3, 3, 512, 512], 512, 'conv4_2')
+      conv_4_3 = self.conv_layer(conv_4_2, [3, 3, 512, 512], 512, 'conv4_3')
+      pool_4, pool_4_argmax = self.pool_layer(conv_4_3)
 
-    # Fifth encoder
-    conv_5_1 = self.conv_layer(pool_4, [3, 3, 512, 512], 512, 'conv5_1')
-    conv_5_2 = self.conv_layer(conv_5_1, [3, 3, 512, 512], 512, 'conv5_2')
-    conv_5_3 = self.conv_layer(conv_5_2, [3, 3, 512, 512], 512, 'conv5_3')
-    pool_5, pool_5_argmax = self.pool_layer(conv_5_3)
+      # Fifth encoder
+      conv_5_1 = self.conv_layer(pool_4, [3, 3, 512, 512], 512, 'conv5_1')
+      conv_5_2 = self.conv_layer(conv_5_1, [3, 3, 512, 512], 512, 'conv5_2')
+      conv_5_3 = self.conv_layer(conv_5_2, [3, 3, 512, 512], 512, 'conv5_3')
+      pool_5, pool_5_argmax = self.pool_layer(conv_5_3)
 
-    # First decoder
-    unpool_5 = self.unpool(pool_5, pool_5_argmax)
-    deconv_5_3 = self.deconv_layer(unpool_5, [3, 3, 512, 512], 512, 'deconv5_3')
-    deconv_5_2 = self.deconv_layer(deconv_5_3, [3, 3, 512, 512], 512, 'deconv5_2')
-    deconv_5_1 = self.deconv_layer(deconv_5_2, [3, 3, 512, 512], 512, 'deconv5_1')
+      # First decoder
+      unpool_5 = self.unpool(pool_5, pool_5_argmax)
+      deconv_5_3 = self.deconv_layer(unpool_5, [3, 3, 512, 512], 512, 'deconv5_3')
+      deconv_5_2 = self.deconv_layer(deconv_5_3, [3, 3, 512, 512], 512, 'deconv5_2')
+      deconv_5_1 = self.deconv_layer(deconv_5_2, [3, 3, 512, 512], 512, 'deconv5_1')
 
-    # Second decoder
-    unpool_4 = self.unpool(deconv_5_1, pool_4_argmax)
-    deconv_4_3 = self.deconv_layer(unpool_4, [3, 3, 512, 512], 512, 'deconv4_3')
-    deconv_4_2 = self.deconv_layer(deconv_4_3, [3, 3, 512, 512], 512, 'deconv4_2')
-    deconv_4_1 = self.deconv_layer(deconv_4_2, [3, 3, 256, 512], 256, 'deconv4_1')
+      # Second decoder
+      unpool_4 = self.unpool(deconv_5_1, pool_4_argmax)
+      deconv_4_3 = self.deconv_layer(unpool_4, [3, 3, 512, 512], 512, 'deconv4_3')
+      deconv_4_2 = self.deconv_layer(deconv_4_3, [3, 3, 512, 512], 512, 'deconv4_2')
+      deconv_4_1 = self.deconv_layer(deconv_4_2, [3, 3, 256, 512], 256, 'deconv4_1')
 
-    # Third decoder
-    unpool_3 = self.unpool(deconv_4_1, pool_3_argmax)
-    deconv_3_3 = self.deconv_layer(unpool_3, [3, 3, 256, 256], 256, 'deconv3_3')
-    deconv_3_2 = self.deconv_layer(deconv_3_3, [3, 3, 256, 256], 256, 'deconv3_2')
-    deconv_3_1 = self.deconv_layer(deconv_3_2, [3, 3, 128, 256], 128, 'deconv3_1')
+      # Third decoder
+      unpool_3 = self.unpool(deconv_4_1, pool_3_argmax)
+      deconv_3_3 = self.deconv_layer(unpool_3, [3, 3, 256, 256], 256, 'deconv3_3')
+      deconv_3_2 = self.deconv_layer(deconv_3_3, [3, 3, 256, 256], 256, 'deconv3_2')
+      deconv_3_1 = self.deconv_layer(deconv_3_2, [3, 3, 128, 256], 128, 'deconv3_1')
 
-    # Fourth decoder
-    unpool_2 = self.unpool(deconv_3_1, pool_2_argmax)
-    deconv_2_2 = self.deconv_layer(unpool_2, [3, 3, 128, 128], 128, 'deconv2_2')
-    deconv_2_1 = self.deconv_layer(deconv_2_2, [3, 3, 64, 128], 64, 'deconv2_1')
+      # Fourth decoder
+      unpool_2 = self.unpool(deconv_3_1, pool_2_argmax)
+      deconv_2_2 = self.deconv_layer(unpool_2, [3, 3, 128, 128], 128, 'deconv2_2')
+      deconv_2_1 = self.deconv_layer(deconv_2_2, [3, 3, 64, 128], 64, 'deconv2_1')
 
-    # Fifth decoder
-    unpool_1 = self.unpool(deconv_2_1, pool_1_argmax)
-    deconv_1_2 = self.deconv_layer(unpool_1, [3, 3, 64, 64], 64, 'deconv1_2')
-    deconv_1_1 = self.deconv_layer(deconv_1_2, [3, 3, 32, 64], 32, 'deconv1_1')
+      # Fifth decoder
+      unpool_1 = self.unpool(deconv_2_1, pool_1_argmax)
+      deconv_1_2 = self.deconv_layer(unpool_1, [3, 3, 64, 64], 64, 'deconv1_2')
+      deconv_1_1 = self.deconv_layer(deconv_1_2, [3, 3, 32, 64], 32, 'deconv1_1')
 
-    # Produce class scores
-    # score_1 dimensions: BATCH_SIZE * WIDTH * HEIGHT * NUMBER_OF_CLASSES
-    score_1 = self.deconv_layer(deconv_1_1, [1, 1, 28, 32], 28, 'score_1')
-    logits = tf.reshape(score_1, (-1, 28))
+      # Produce class scores
+      # score_1 dimensions: BATCH_SIZE * WIDTH * HEIGHT * NUMBER_OF_CLASSES
+      score_1 = self.deconv_layer(deconv_1_1, [1, 1, 28, 32], 28, 'score_1')
+      logits = tf.reshape(score_1, (-1, 28))
 
-    # Prepare network for training
-    cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(
-      labels=tf.reshape(expected, [-1]), logits=logits, name='x_entropy')
-    self.loss = tf.reduce_mean(cross_entropy, name='x_entropy_mean')
-    self.train_step = tf.train.AdamOptimizer(self.rate).minimize(self.loss)
+      # Prepare network for training
+      cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(
+        labels=tf.reshape(expected, [-1]), logits=logits, name='x_entropy')
+      self.loss = tf.reduce_mean(cross_entropy, name='x_entropy_mean')
+      self.train_step = tf.train.AdamOptimizer(self.rate).minimize(self.loss)
 
-    # Metrics
-    self.prediction = tf.argmax(score_1, axis=3, name="prediction")
-    self.accuracy = tf.contrib.metrics.accuracy(self.prediction, self.y, name='accuracy')
+      # Metrics
+      self.prediction = tf.argmax(score_1, axis=3, name="prediction")
+      self.accuracy = tf.contrib.metrics.accuracy(self.prediction, self.y, name='accuracy')
 
   def restore_session(self):
     global_step = 0

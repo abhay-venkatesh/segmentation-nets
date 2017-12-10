@@ -8,6 +8,7 @@ from utils.DatasetReader import DatasetReader
 from PIL import Image
 import datetime
 import os
+os.environ["CUDA_VISIBLE_DEVICES"] = '1'
 
 class BatchSegNet:
   ''' Network described by,

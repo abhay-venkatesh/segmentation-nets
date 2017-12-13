@@ -11,8 +11,8 @@ class DatasetReader:
     self.validation_data = open('./datasets/unreal_randomyaw/val.txt').readlines()
     self.test_data = open('./datasets/unreal_randomyaw/test.txt').readlines()
     self.text_index = 0
-    self.HEIGHT = 320
     self.WIDTH = 480
+    self.HEIGHT = 320
 
   def next_train_pair(self):
     # Load image

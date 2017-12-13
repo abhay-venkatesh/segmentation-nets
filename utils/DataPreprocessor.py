@@ -72,7 +72,7 @@ class DataPreprocessor:
     res = np.zeros((m,n))
     print("Working on" + filePath)
     for key in color_map:
-      match_region=match_color(img,key)
+      match_region=self.match_color(img,key)
       if not (match_region is None):
         res = (np.multiply(res, ~match_region)) + match_region*color_map[key]
     outfile = '../datasets/unreal_randomyaw/ground_truths/seg' + str(counter) + '.png' 

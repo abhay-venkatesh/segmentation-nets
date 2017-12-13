@@ -7,7 +7,7 @@ from matplotlib import pyplot as plt
 import os
 
 # Match an i
-def match_color(object_mask, target_color, tolerance=3):
+def match_color(object_mask, target_color, tolerance=15):
   match_region = np.ones(object_mask.shape[0:2], dtype=bool)
   for c in range(3):
     min_val = target_color[c] - tolerance
@@ -22,11 +22,21 @@ def match_color(object_mask, target_color, tolerance=3):
 
 # Get color to class and class to number maps
 # Used in convert_image
-color2class = json.load(open('finalColorsToClasses.json','r'))
-class2num = json.load(open('finalClassesToInt.json','r'))
+color2class = json.load(open('reducedColorsToClasses.json','r'))
+class2num = json.load(open('reducedClassesToInt.json','r'))
 color_map = {}
 for color in color2class:
   color_map[literal_eval(color)] = class2num[color2class[color]]
+
+"""
+  A note on classes:
+    Garden, Bench: chairs in the garden
+    Power: The electric cable lines
+    Outer, Small, Roof, Veranda, Cladding
+      Chimney, Garage, Drain, House, Porch: Houses
+    Fir, Oak, Birch, Tree: Smaller trees
+
+"""
 
 def convert_image(dirName, fname, counter):
   ''' Takes a directory name, file name and a counter and 
@@ -67,7 +77,8 @@ def preprocess():
     for fname in fileList:
 
       if fname == 'seg0.png':
-        convert_image(dirName, fname, counter)
+        if counter > 20:
+          convert_image(dirName, fname, counter)
         counter += 1
 
       if counter == 5000:

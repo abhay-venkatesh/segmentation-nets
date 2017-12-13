@@ -25,7 +25,17 @@ class ImageResizer:
       output_path = self.output_directory + file
       cv2.imwrite(output_path, image)
 
-      print("Resized " + output_path)
+  def resize_images(self, WIDTH, HEIGHT):
+    # Go over each file
+    files = next(os.walk(self.input_directory))[2]
+    for file in files:
+
+      # Resize and write the file
+      file_path = self.input_directory + file
+      image = cv2.imread(file_path)
+      image = cv2.resize(image, (WIDTH, HEIGHT), interpolation=cv2.INTER_NEAREST)
+      output_path = self.output_directory + file
+      cv2.imwrite(output_path, image)
       
 def main():
   input_directory = '../datasets/unreal_randomyaw_27classes/ground_truths/'

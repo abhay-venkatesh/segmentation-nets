@@ -25,8 +25,6 @@ def next_train_pair():
   plt.imshow(ground_truth, cmap='gray')
   plt.show()
 
-  
-
 def main():
   next_train_pair()
 

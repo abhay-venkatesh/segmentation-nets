@@ -14,10 +14,10 @@ def match_color(object_mask, target_color, tolerance=3):
     channel_region = (object_mask[:,:,c] >= min_val) & (object_mask[:,:,c] <= max_val)
     match_region &= channel_region
 
-    if match_region.sum() != 0:
-      return match_region
-    else:
-      return None
+  if match_region.sum() != 0:
+    return match_region
+  else:
+    return None
 
 # Get color to class and class to number maps
 # Used in convert_image

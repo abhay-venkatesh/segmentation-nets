@@ -19,6 +19,9 @@ class BatchDatasetReader:
     self.WIDTH = WIDTH
     self.HEIGHT = HEIGHT
 
+    # TODO: Epoch tracking
+    # self.epoch = ?
+
     # Prepare dataset record files
     rfg = RecordFileGenerator(directory)
     self.num_train, self.num_val, self.num_test = rfg.create_files()
@@ -50,7 +53,7 @@ class BatchDatasetReader:
 
   def shuffle_training_data(self):
     print("---- Completed " + str(self.current_step/self.num_train) + " epochs ----")
-    lines = open(self.directory + 'train.txt').readlines
+    lines = open(self.directory + 'train.txt').readlines()
     random.shuffle(lines)
     open(self.directory + 'train.txt', 'w').writelines(lines)
     self.training_data = open(self.directory + 'train.txt').readlines()

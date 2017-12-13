@@ -22,8 +22,8 @@ def match_color(object_mask, target_color, tolerance=15):
 
 # Get color to class and class to number maps
 # Used in convert_image
-color2class = json.load(open('reducedColorsToClasses.json','r'))
-class2num = json.load(open('reducedClassesToInt.json','r'))
+color2class = json.load(open('finalColorsToClasses.json','r'))
+class2num = json.load(open('finalClassesToInt.json','r'))
 color_map = {}
 for color in color2class:
   color_map[literal_eval(color)] = class2num[color2class[color]]
@@ -77,7 +77,7 @@ def preprocess():
     for fname in fileList:
 
       if fname == 'seg0.png':
-        if counter > 20:
+        if counter > 0:
           convert_image(dirName, fname, counter)
         counter += 1
 

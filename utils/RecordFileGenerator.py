@@ -27,7 +27,7 @@ class RecordFileGenerator:
           for i in range(numValidationImages):
             valfile.write('pic' + str(i + numTrainingImages) + ".png\n")
           for i in range(numTestImages):
-            testfile.write('pic' + str(i) + ".png\n")
+            testfile.write('pic' + str(i + numTrainingImages + numValidationImages) + ".png\n")
 
 def main():
   RecordFileGenerator().create_files()

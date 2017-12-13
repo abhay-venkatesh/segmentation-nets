@@ -1,14 +1,16 @@
-# Import modules for building the network
 import tensorflow as tf
 import numpy as np
 import scipy.io
 from math import ceil
 import cv2
-from utils.DatasetReader import DatasetReader
+from utils.BatchDatasetReader import BatchDatasetReader
 from PIL import Image
 import datetime
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = '1'
+
+# Only use a single GPU when not testing
+if os.name != 'nt': 
+  os.environ["CUDA_VISIBLE_DEVICES"] = '1'
 
 class BatchSegNet:
   ''' Network described by,
@@ -32,11 +34,13 @@ class BatchSegNet:
             'conv5_1', 'relu5_1', 'conv5_2', 'relu5_2', 'conv5_3',
             'relu5_3', 'conv5_4', 'relu5_4')
 
-  def __init__(self):
-    # Load VGG model weights to initialize network weights to
+  def __init__(self, dataset_directory, num_classes=11):
+    self.num_classes = num_classes
+
     self.load_vgg_weights()
 
-    # Build the network
+    self.dataset_directory = dataset_directory
+
     self.build()
 
     # Begin a TensorFlow session
@@ -110,8 +114,10 @@ class BatchSegNet:
       ret = tf.reshape(ret, tf.stack(output_shape))
       return ret
 
-  # Implementation idea from: https://github.com/tensorflow/tensorflow/issues/2169
+  
   def unravel_argmax(self, argmax, shape):
+    ''' Implementation idea from: 
+        https://github.com/tensorflow/tensorflow/issues/2169 '''
     output_list = []
     output_list.append(argmax // (shape[2] * shape[3]))
     output_list.append(argmax % (shape[2] * shape[3]) // shape[3])
@@ -242,8 +248,8 @@ class BatchSegNet:
 
       # Produce class scores
       # score_1 dimensions: BATCH_SIZE * WIDTH * HEIGHT * NUMBER_OF_CLASSES
-      score_1 = self.deconv_layer(deconv_1_1, [1, 1, 28, 32], 28, 'score_1')
-      logits = tf.reshape(score_1, (-1, 28))
+      score_1 = self.deconv_layer(deconv_1_1, [1, 1, self.num_classes, 32], self.num_classes, 'score_1')
+      logits = tf.reshape(score_1, (-1, self.num_classes))
 
       # Prepare network for training
       cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(
@@ -272,21 +278,15 @@ class BatchSegNet:
 
   
   def train(self, num_iterations=10000, learning_rate=1e-6, batch_size=5):
-    # Restore previous session if exists
     current_step = self.restore_session()
 
-    dataset = DatasetReader()
-    
-
-    # Count number of items trained on
-    count = 0
-    count += (current_step * batch_size)
+    bdr = BatchDatasetReader(self.dataset_directory, 480, 320, current_step, batch_size)
 
     # Begin Training
     for i in range(current_step, num_iterations):
 
       # One training step
-      images, ground_truths = dataset.next_train_batch(batch_size)
+      images, ground_truths = bdr.next_training_batch()
       feed_dict = {self.x: images, self.y: ground_truths, self.rate: learning_rate}
       print('run train step: ' + str(i))
       self.train_step.run(session=self.session, feed_dict=feed_dict)
@@ -298,7 +298,7 @@ class BatchSegNet:
 
       # Run against validation dataset for 100 iterations
       if i % 100 == 0:
-        images, ground_truths = dataset.next_val_batch(batch_size)
+        images, ground_truths = bdr.next_val_batch()
         feed_dict = {self.x: images, self.y: ground_truths, self.rate: learning_rate}
         val_loss = self.session.run(self.loss, feed_dict=feed_dict)
         val_accuracy = self.session.run(self.accuracy, feed_dict=feed_dict)
@@ -308,6 +308,3 @@ class BatchSegNet:
         # Save the model variables
         self.saver.save(self.session, self.checkpoint_directory + 'segnet', global_step = i)
 
-      count += batch_size
-      if count % 5000 == 0:
-        print("---- COMPLETED " + str(count/5000) + " EPOCH(S) ----")

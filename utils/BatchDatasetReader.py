@@ -5,7 +5,6 @@ import random
 from utils.ImageResizer import ImageResizer 
 from utils.RecordFileGenerator import RecordFileGenerator
 
-# TODO: Complete this
 class BatchDatasetReader:
   ''' Helper class to SegNet that handles data reading, conversion 
     and all things related to data '''
@@ -19,12 +18,11 @@ class BatchDatasetReader:
     self.WIDTH = WIDTH
     self.HEIGHT = HEIGHT
 
-    # TODO: Epoch tracking
-    # self.epoch = ?
-
     # Prepare dataset record files
     rfg = RecordFileGenerator(directory)
     self.num_train, self.num_val, self.num_test = rfg.create_files()
+
+    self.epoch = self.current_step/self.num_train
 
     # Say we have 100 training images
     # Say we are at training step 10
@@ -52,7 +50,7 @@ class BatchDatasetReader:
     self.test_data = open(directory + 'test.txt').readlines()
 
   def shuffle_training_data(self):
-    print("---- Completed " + str(self.current_step/self.num_train) + " epochs ----")
+    print("---- Completed " + str(self.epoch) + " epochs ----")
     lines = open(self.directory + 'train.txt').readlines()
     random.shuffle(lines)
     open(self.directory + 'train.txt', 'w').writelines(lines)
@@ -66,6 +64,7 @@ class BatchDatasetReader:
 
       if self.train_index == 0:
         self.shuffle_training_data()
+        self.epoch += 1
 
       # Load image
       image_directory = self.directory + 'images_resized/'

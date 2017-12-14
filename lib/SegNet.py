@@ -7,8 +7,12 @@ from utils.DatasetReader import DatasetReader
 from PIL import Image
 import datetime
 import os
+from utils.Logger import Logger
+import math
 
-NUM_CLASSES = 11
+# Only use a single GPU when not testing
+if os.name != 'nt': 
+  os.environ["CUDA_VISIBLE_DEVICES"] = '1'
 
 class SegNet:
   ''' Network described by,
@@ -18,16 +22,9 @@ class SegNet:
     """ Use the VGG model trained on
       imagent dataset as a starting point for training """
 
-    # Download model if not existing
-    # TODO: wget does not work for windows
-    # TODO: Doesn't work on linux either
-    try:
-      vgg_path = "models/imagenet-vgg-verydeep-19.mat"
-      vgg_mat = scipy.io.loadmat(vgg_path)
-    except (OSError, IOError) as e:
-      import wget
-      vgg_url = "http://www.vlfeat.org/matconvnet/models/beta16/imagenet-vgg-verydeep-19.mat"
-      wget.download(vgg_url, out='./models/imagenet-vgg-verydeep-19.mat')
+    # REMINDER: Download model if not existing
+    vgg_path = "models/imagenet-vgg-verydeep-19.mat"
+    vgg_mat = scipy.io.loadmat(vgg_path)
 
     self.vgg_params = np.squeeze(vgg_mat['layers'])
     self.layers = ('conv1_1', 'relu1_1', 'conv1_2', 'relu1_2', 'pool1',
@@ -39,20 +36,24 @@ class SegNet:
             'conv5_1', 'relu5_1', 'conv5_2', 'relu5_2', 'conv5_3',
             'relu5_3', 'conv5_4', 'relu5_4')
 
-  def __init__(self):
-    # Load VGG model weights to initialize network weights to
+  def __init__(self, dataset_directory, num_classes=11):
+    self.dataset_directory = dataset_directory
+
+    self.num_classes = num_classes
+
     self.load_vgg_weights()
 
-    # Build the network
     self.build()
 
     # Begin a TensorFlow session
+    config = tf.ConfigProto(allow_soft_placement=True)
     self.session = tf.Session()
     self.session.run(tf.global_variables_initializer())
 
     # Make saving trained weights and biases possible
     self.saver = tf.train.Saver(max_to_keep = 5, keep_checkpoint_every_n_hours = 1)
     self.checkpoint_directory = './checkpoints/'
+    self.logger = Logger()
 
   def vgg_weight_and_bias(self, name, W_shape, b_shape):
     """ 
@@ -67,7 +68,7 @@ class SegNet:
         b_var: Initialized bias variable
     """
     if name not in self.layers:
-      raise KeyError("Layer missing in VGG model or mispelled. ")
+      return self.weight_variable(W_shape), self.bias_variable(b_shape)
     else:
       w, b = self.vgg_params[self.layers.index(name)][0][0][0][0]
       init_w = tf.constant(value=np.transpose(w, (1, 0, 2, 3)), dtype=tf.float32, shape=W_shape)
@@ -84,7 +85,7 @@ class SegNet:
     initial = tf.constant(0.1, shape=shape)
     return tf.Variable(initial)
 
-  def batch_norm_layer(inputT, is_training, scope):
+  def batch_norm_layer(self, inputT, is_training, scope):
     return tf.cond(is_training,
           lambda: tf.contrib.layers.batch_norm(inputT, is_training=True,
                            center=False, updates_collections=None, scope=scope+"_bn"),
@@ -162,7 +163,7 @@ class SegNet:
     with tf.variable_scope(name) as scope:
       W, b = self.vgg_weight_and_bias(name, W_shape, [out_channel])
       output = tf.nn.conv2d(x, W, strides=[1,1,1,1], padding=padding) + b
-      return tf.nn.relu(batch_norm_layer(output, train_phase, scope.name))
+      return tf.nn.relu(self.batch_norm_layer(output, train_phase, scope.name))
 
   def deconv_layer(self, x, W_shape, b_shape, name, padding='SAME'):
     W = self.weight_variable(W_shape)
@@ -235,14 +236,13 @@ class SegNet:
     deconv_1_1 = self.conv_layer_with_bn(deconv_1_2, [3, 3, 64, 32], self.train_phase, 'deconv1_1')
 
     # Produce class scores
-    preds = self.conv_layer(deconv_1_1, [1, 1, 32, NUM_CLASSES], 'preds')
-    self.logits = tf.reshape(preds, (-1, NUM_CLASSES))
+    preds = self.conv_layer(deconv_1_1, [1, 1, 32, self.num_classes], 'preds')
+    self.logits = tf.reshape(preds, (-1, self.num_classes))
 
     # Prepare network for training
     cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(
       labels=tf.reshape(expected, [-1]), logits=self.logits, name='x_entropy')
     self.loss = tf.reduce_mean(cross_entropy, name='x_entropy_mean')
-    self.train_step = tf.train.AdamOptimizer(self.rate).minimize(self.loss)
 
     # Metrics
     predicted_image = tf.argmax(preds, axis=3)
@@ -265,12 +265,15 @@ class SegNet:
 
   
   def train(self, num_iterations=10000, learning_rate=1e-6):
+    self.rate = learning_rate
+
     # Restore previous session if exists
     current_step = self.restore_session()
 
     dataset = DatasetReader()
     
     # Begin Training
+    self.train_step = tf.train.AdamOptimizer(self.rate).minimize(self.loss)
     for i in range(current_step, num_iterations):
 
       # One training step
@@ -292,6 +295,11 @@ class SegNet:
         val_accuracy = self.session.run(self.accuracy, feed_dict=feed_dict)
         print("%s ---> Validation_loss: %g" % (datetime.datetime.now(), val_loss))
         print("%s ---> Validation_accuracy: %g" % (datetime.datetime.now(), val_accuracy))
+
+        self.logger.log("%s ---> Number of epochs: %g\n" % (datetime.datetime.now(), math.floor((i * batch_size)/bdr.num_train)))
+        self.logger.log("%s ---> Number of iterations: %g\n" % (datetime.datetime.now(), i))
+        self.logger.log("%s ---> Validation_loss: %g\n" % (datetime.datetime.now(), val_loss))
+        self.logger.log("%s ---> Validation_accuracy: %g\n" % (datetime.datetime.now(), val_accuracy))
 
         # Save the model variables
         self.saver.save(self.session, self.checkpoint_directory + 'segnet', global_step = i)

@@ -14,11 +14,13 @@ import math
 if os.name != 'nt': 
   os.environ["CUDA_VISIBLE_DEVICES"] = '1'
 
-class BatchSegNet:
+class BatchSegDeconvNet:
   ''' Network described by,
   https://arxiv.org/pdf/1505.04366v1.pdf
   and https://arxiv.org/pdf/1505.07293.pdf
-  and https://arxiv.org/pdf/1511.00561.pdf '''
+  and https://arxiv.org/pdf/1511.00561.pdf 
+
+  Hybrid network: SegNet + DeconvNet '''
 
   def load_vgg_weights(self):
     """ Use the VGG model trained on
@@ -37,11 +39,11 @@ class BatchSegNet:
             'relu5_3', 'conv5_4', 'relu5_4')
 
   def __init__(self, dataset_directory, num_classes=11):
+    self.dataset_directory = dataset_directory
+
     self.num_classes = num_classes
 
     self.load_vgg_weights()
-
-    self.dataset_directory = dataset_directory
 
     self.build()
 
@@ -307,6 +309,7 @@ class BatchSegNet:
         val_accuracy = self.session.run(self.accuracy, feed_dict=feed_dict)
         print("%s ---> Validation_loss: %g" % (datetime.datetime.now(), val_loss))
         print("%s ---> Validation_accuracy: %g" % (datetime.datetime.now(), val_accuracy))
+
         self.logger.log("%s ---> Number of epochs: %g\n" % (datetime.datetime.now(), math.floor((i * batch_size)/bdr.num_train)))
         self.logger.log("%s ---> Number of iterations: %g\n" % (datetime.datetime.now(), i))
         self.logger.log("%s ---> Validation_loss: %g\n" % (datetime.datetime.now(), val_loss))

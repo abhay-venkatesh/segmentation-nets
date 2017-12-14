@@ -11,7 +11,6 @@ import datetime
 import os
 from utils.Logger import Logger
 import math
-from matplotlib import pyplot as plt
 
 # Only use a single GPU when not testing
 if os.name != 'nt': 

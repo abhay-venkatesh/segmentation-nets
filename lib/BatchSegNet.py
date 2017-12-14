@@ -4,11 +4,14 @@ import scipy.io
 from math import ceil
 import cv2
 from utils.BatchDatasetReader import BatchDatasetReader
+from utils.DatasetReader import DatasetReader
+from utils.DataPostprocessor import DataPostprocessor
 from PIL import Image
 import datetime
 import os
 from utils.Logger import Logger
 import math
+from matplotlib import pyplot as plt
 
 # Only use a single GPU when not testing
 if os.name != 'nt': 
@@ -263,7 +266,22 @@ class BatchSegNet:
         self.logger.log("%s ---> Validation_loss: %g\n" % (datetime.datetime.now(), val_loss))
         self.logger.log("%s ---> Validation_accuracy: %g\n" % (datetime.datetime.now(), val_accuracy))
 
-
         # Save the model variables
         self.saver.save(self.session, self.checkpoint_directory + 'segnet', global_step = i)
+
+  def test(self, learning_rate=1e-6,):
+
+    # Get trained weights and biases
+    self.restore_session()
+
+    dr = DatasetReader(480, 320)
+
+    image, ground_truth = dr.next_test_pair()
+    feed_dict = {self.x: [image], self.y: [ground_truth], self.rate: learning_rate}
+    segmentation = np.squeeze(self.session.run(self.prediction, feed_dict=feed_dict))
+    dp = DataPostprocessor()
+    dp.write_out(segmentation, ground_truth)
+
+    
+
 

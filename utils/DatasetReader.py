@@ -6,13 +6,13 @@ class DatasetReader:
   ''' Helper class to SegNet that handles data reading, conversion 
       and all things related to data '''
 
-  def __init__(self):
+  def __init__(self, WIDTH, HEIGHT):
     self.training_data = open('./datasets/unreal_randomyaw/train.txt').readlines()
     self.validation_data = open('./datasets/unreal_randomyaw/val.txt').readlines()
     self.test_data = open('./datasets/unreal_randomyaw/test.txt').readlines()
-    self.text_index = 0
-    self.WIDTH = 480
-    self.HEIGHT = 320
+    self.test_index = 0
+    self.WIDTH = WIDTH
+    self.HEIGHT = HEIGHT
 
   def next_train_pair(self):
     # Load image

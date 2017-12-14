@@ -66,7 +66,7 @@ class BatchSegNet:
         b_var: Initialized bias variable
     """
     if name not in self.layers:
-      return self.weight_variable(W_shape), self.weight_variable([b_shape])
+      return self.weight_variable(W_shape), self.weight_variable(b_shape)
     else:
       w, b = self.vgg_params[self.layers.index(name)][0][0][0][0]
       init_w = tf.constant(value=np.transpose(w, (1, 0, 2, 3)), dtype=tf.float32, shape=W_shape)
@@ -124,7 +124,7 @@ class BatchSegNet:
   def conv_layer_with_bn(self, x, W_shape, b_shape, name, padding='SAME'):
     W, b = self.vgg_weight_and_bias(name, W_shape, [b_shape])
     output = tf.nn.conv2d(x, W, strides=[1,1,1,1], padding=padding) + b
-    batch_norm = tf.contrib.layers(output)
+    batch_norm = tf.contrib.layers.batch_norm(output)
     return tf.nn.relu(batch_norm)
 
   def deconv_layer(self, x, W_shape, b_shape, name, padding='SAME'):
@@ -144,31 +144,31 @@ class BatchSegNet:
       self.rate = tf.placeholder(tf.float32, shape=[])
 
       # First encoder
-      conv_1_1 = self.conv_layer(self.x, [3, 3, 3, 64], 64, 'conv1_1')
-      conv_1_2 = self.conv_layer(conv_1_1, [3, 3, 64, 64], 64, 'conv1_2')
+      conv_1_1 = self.conv_layer_with_bn(self.x, [3, 3, 3, 64], 64, 'conv1_1')
+      conv_1_2 = self.conv_layer_with_bn(conv_1_1, [3, 3, 64, 64], 64, 'conv1_2')
       pool_1, pool_1_argmax = self.pool_layer(conv_1_2)
 
       # Second encoder
-      conv_2_1 = self.conv_layer(pool_1, [3, 3, 64, 128], 128, 'conv2_1')
-      conv_2_2 = self.conv_layer(conv_2_1, [3, 3, 128, 128], 128, 'conv2_2')
+      conv_2_1 = self.conv_layer_with_bn(pool_1, [3, 3, 64, 128], 128, 'conv2_1')
+      conv_2_2 = self.conv_layer_with_bn(conv_2_1, [3, 3, 128, 128], 128, 'conv2_2')
       pool_2, pool_2_argmax = self.pool_layer(conv_2_2)
 
       # Third encoder
-      conv_3_1 = self.conv_layer(pool_2, [3, 3, 128, 256], 256, 'conv3_1')
-      conv_3_2 = self.conv_layer(conv_3_1, [3, 3, 256, 256], 256, 'conv3_2')
-      conv_3_3 = self.conv_layer(conv_3_2, [3, 3, 256, 256], 256, 'conv3_3')
+      conv_3_1 = self.conv_layer_with_bn(pool_2, [3, 3, 128, 256], 256, 'conv3_1')
+      conv_3_2 = self.conv_layer_with_bn(conv_3_1, [3, 3, 256, 256], 256, 'conv3_2')
+      conv_3_3 = self.conv_layer_with_bn(conv_3_2, [3, 3, 256, 256], 256, 'conv3_3')
       pool_3, pool_3_argmax = self.pool_layer(conv_3_3)
 
       # Fourth encoder
-      conv_4_1 = self.conv_layer(pool_3, [3, 3, 256, 512], 512, 'conv4_1')
-      conv_4_2 = self.conv_layer(conv_4_1, [3, 3, 512, 512], 512, 'conv4_2')
-      conv_4_3 = self.conv_layer(conv_4_2, [3, 3, 512, 512], 512, 'conv4_3')
+      conv_4_1 = self.conv_layer_with_bn(pool_3, [3, 3, 256, 512], 512, 'conv4_1')
+      conv_4_2 = self.conv_layer_with_bn(conv_4_1, [3, 3, 512, 512], 512, 'conv4_2')
+      conv_4_3 = self.conv_layer_with_bn(conv_4_2, [3, 3, 512, 512], 512, 'conv4_3')
       pool_4, pool_4_argmax = self.pool_layer(conv_4_3)
 
       # Fifth encoder
-      conv_5_1 = self.conv_layer(pool_4, [3, 3, 512, 512], 512, 'conv5_1')
-      conv_5_2 = self.conv_layer(conv_5_1, [3, 3, 512, 512], 512, 'conv5_2')
-      conv_5_3 = self.conv_layer(conv_5_2, [3, 3, 512, 512], 512, 'conv5_3')
+      conv_5_1 = self.conv_layer_with_bn(pool_4, [3, 3, 512, 512], 512, 'conv5_1')
+      conv_5_2 = self.conv_layer_with_bn(conv_5_1, [3, 3, 512, 512], 512, 'conv5_2')
+      conv_5_3 = self.conv_layer_with_bn(conv_5_2, [3, 3, 512, 512], 512, 'conv5_3')
       pool_5, pool_5_argmax = self.pool_layer(conv_5_3)
 
       # First decoder

@@ -8,6 +8,8 @@ from PIL import Image
 import datetime
 import os
 
+NUM_CLASSES = 11
+
 class SegNet:
   ''' Network described by,
   https://arxiv.org/pdf/1511.00561.pdf '''
@@ -82,6 +84,13 @@ class SegNet:
     initial = tf.constant(0.1, shape=shape)
     return tf.Variable(initial)
 
+  def batch_norm_layer(inputT, is_training, scope):
+    return tf.cond(is_training,
+          lambda: tf.contrib.layers.batch_norm(inputT, is_training=True,
+                           center=False, updates_collections=None, scope=scope+"_bn"),
+          lambda: tf.contrib.layers.batch_norm(inputT, is_training=False,
+                           updates_collections=None, center=False, scope=scope+"_bn", reuse = True))
+
   def pool_layer(self, x):
     return tf.nn.max_pool_with_argmax(x, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
 
@@ -140,12 +149,20 @@ class SegNet:
     delta = tf.SparseTensor(indices, values, tf.to_int64(tf.shape(output)))
     return tf.expand_dims(tf.sparse_tensor_to_dense(tf.sparse_reorder(delta)), 0)
         
-  def conv_layer(self, x, W_shape, b_shape, name, padding='SAME'):
+  def conv_layer(self, x, W_shape, name, padding='SAME'):
     # Pass b_shape as list because need the object to be iterable for the constant initializer
-    W, b = self.vgg_weight_and_bias(name, W_shape, [b_shape])
+    out_channel = W_shape[3]
+    W, b = self.vgg_weight_and_bias(name, W_shape, [out_channel])
 
     output = tf.nn.conv2d(x, W, strides=[1,1,1,1], padding=padding) + b
     return tf.nn.relu(output)
+
+  def conv_layer_with_bn(self, x, W_shape, train_phase, name, padding='SAME'):
+    out_channel = W_shape[3]
+    with tf.variable_scope(name) as scope:
+      W, b = self.vgg_weight_and_bias(name, W_shape, [out_channel])
+      output = tf.nn.conv2d(x, W, strides=[1,1,1,1], padding=padding) + b
+      return tf.nn.relu(batch_norm_layer(output, train_phase, scope.name))
 
   def deconv_layer(self, x, W_shape, b_shape, name, padding='SAME'):
     W = self.weight_variable(W_shape)
@@ -159,67 +176,67 @@ class SegNet:
     self.x = tf.placeholder(tf.float32, shape=(1, None, None, 3))
     self.y = tf.placeholder(tf.int64, shape=(1, None, None))
     expected = tf.expand_dims(self.y, -1)
-    self.rate = tf.placeholder(tf.float32, shape=[])
+    self.train_phase = tf.placeholder(tf.bool, name='train_phase')
 
     # First encoder
-    conv_1_1 = self.conv_layer(self.x, [3, 3, 3, 64], 64, 'conv1_1')
-    conv_1_2 = self.conv_layer(conv_1_1, [3, 3, 64, 64], 64, 'conv1_2')
+    conv_1_1 = self.conv_layer_with_bn(self.x, [3, 3, 3, 64], self.train_phase, 'conv1_1')
+    conv_1_2 = self.conv_layer_with_bn(conv_1_1, [3, 3, 64, 64], self.train_phase, 'conv1_2')
     pool_1, pool_1_argmax = self.pool_layer(conv_1_2)
 
     # Second encoder
-    conv_2_1 = self.conv_layer(pool_1, [3, 3, 64, 128], 128, 'conv2_1')
-    conv_2_2 = self.conv_layer(conv_2_1, [3, 3, 128, 128], 128, 'conv2_2')
+    conv_2_1 = self.conv_layer_with_bn(pool_1, [3, 3, 64, 128], self.train_phase, 'conv2_1')
+    conv_2_2 = self.conv_layer_with_bn(conv_2_1, [3, 3, 128, 128], self.train_phase, 'conv2_2')
     pool_2, pool_2_argmax = self.pool_layer(conv_2_2)
 
     # Third encoder
-    conv_3_1 = self.conv_layer(pool_2, [3, 3, 128, 256], 256, 'conv3_1')
-    conv_3_2 = self.conv_layer(conv_3_1, [3, 3, 256, 256], 256, 'conv3_2')
-    conv_3_3 = self.conv_layer(conv_3_2, [3, 3, 256, 256], 256, 'conv3_3')
+    conv_3_1 = self.conv_layer_with_bn(pool_2, [3, 3, 128, 256], self.train_phase, 'conv3_1')
+    conv_3_2 = self.conv_layer_with_bn(conv_3_1, [3, 3, 256, 256], self.train_phase, 'conv3_2')
+    conv_3_3 = self.conv_layer_with_bn(conv_3_2, [3, 3, 256, 256], self.train_phase, 'conv3_3')
     pool_3, pool_3_argmax = self.pool_layer(conv_3_3)
 
     # Fourth encoder
-    conv_4_1 = self.conv_layer(pool_3, [3, 3, 256, 512], 512, 'conv4_1')
-    conv_4_2 = self.conv_layer(conv_4_1, [3, 3, 512, 512], 512, 'conv4_2')
-    conv_4_3 = self.conv_layer(conv_4_2, [3, 3, 512, 512], 512, 'conv4_3')
+    conv_4_1 = self.conv_layer_with_bn(pool_3, [3, 3, 256, 512], self.train_phase, 'conv4_1')
+    conv_4_2 = self.conv_layer_with_bn(conv_4_1, [3, 3, 512, 512], self.train_phase, 'conv4_2')
+    conv_4_3 = self.conv_layer_with_bn(conv_4_2, [3, 3, 512, 512], self.train_phase, 'conv4_3')
     pool_4, pool_4_argmax = self.pool_layer(conv_4_3)
 
     # Fifth encoder
-    conv_5_1 = self.conv_layer(pool_4, [3, 3, 512, 512], 512, 'conv5_1')
-    conv_5_2 = self.conv_layer(conv_5_1, [3, 3, 512, 512], 512, 'conv5_2')
-    conv_5_3 = self.conv_layer(conv_5_2, [3, 3, 512, 512], 512, 'conv5_3')
+    conv_5_1 = self.conv_layer_with_bn(pool_4, [3, 3, 512, 512], self.train_phase, 'conv5_1')
+    conv_5_2 = self.conv_layer_with_bn(conv_5_1, [3, 3, 512, 512], self.train_phase, 'conv5_2')
+    conv_5_3 = self.conv_layer_with_bn(conv_5_2, [3, 3, 512, 512], self.train_phase, 'conv5_3')
     pool_5, pool_5_argmax = self.pool_layer(conv_5_3)
 
     # First decoder
     unpool_5 = self.unpool_layer2x2(pool_5, pool_5_argmax, tf.shape(conv_5_3))
-    deconv_5_3 = self.deconv_layer(unpool_5, [3, 3, 512, 512], 512, 'deconv5_3')
-    deconv_5_2 = self.deconv_layer(deconv_5_3, [3, 3, 512, 512], 512, 'deconv5_2')
-    deconv_5_1 = self.deconv_layer(deconv_5_2, [3, 3, 512, 512], 512, 'deconv5_1')
+    deconv_5_3 = self.conv_layer_with_bn(unpool_5, [3, 3, 512, 512], self.train_phase, 'deconv5_3')
+    deconv_5_2 = self.conv_layer_with_bn(deconv_5_3, [3, 3, 512, 512], self.train_phase, 'deconv5_2')
+    deconv_5_1 = self.conv_layer_with_bn(deconv_5_2, [3, 3, 512, 512], self.train_phase, 'deconv5_1')
 
     # Second decoder
     unpool_4 = self.unpool_layer2x2(deconv_5_1, pool_4_argmax, tf.shape(conv_4_3))
-    deconv_4_3 = self.deconv_layer(unpool_4, [3, 3, 512, 512], 512, 'deconv4_3')
-    deconv_4_2 = self.deconv_layer(deconv_4_3, [3, 3, 512, 512], 512, 'deconv4_2')
-    deconv_4_1 = self.deconv_layer(deconv_4_2, [3, 3, 256, 512], 256, 'deconv4_1')
+    deconv_4_3 = self.conv_layer_with_bn(unpool_4, [3, 3, 512, 512], self.train_phase, 'deconv4_3')
+    deconv_4_2 = self.conv_layer_with_bn(deconv_4_3, [3, 3, 512, 512], self.train_phase, 'deconv4_2')
+    deconv_4_1 = self.conv_layer_with_bn(deconv_4_2, [3, 3, 512, 256], self.train_phase, 'deconv4_1')
 
     # Third decoder
     unpool_3 = self.unpool_layer2x2(deconv_4_1, pool_3_argmax, tf.shape(conv_3_3))
-    deconv_3_3 = self.deconv_layer(unpool_3, [3, 3, 256, 256], 256, 'deconv3_3')
-    deconv_3_2 = self.deconv_layer(deconv_3_3, [3, 3, 256, 256], 256, 'deconv3_2')
-    deconv_3_1 = self.deconv_layer(deconv_3_2, [3, 3, 128, 256], 128, 'deconv3_1')
+    deconv_3_3 = self.conv_layer_with_bn(unpool_3, [3, 3, 256, 256], self.train_phase, 'deconv3_3')
+    deconv_3_2 = self.conv_layer_with_bn(deconv_3_3, [3, 3, 256, 256], self.train_phase, 'deconv3_2')
+    deconv_3_1 = self.conv_layer_with_bn(deconv_3_2, [3, 3, 256, 128], self.train_phase, 'deconv3_1')
 
     # Fourth decoder
     unpool_2 = self.unpool_layer2x2(deconv_3_1, pool_2_argmax, tf.shape(conv_2_2))
-    deconv_2_2 = self.deconv_layer(unpool_2, [3, 3, 128, 128], 128, 'deconv2_2')
-    deconv_2_1 = self.deconv_layer(deconv_2_2, [3, 3, 64, 128], 64, 'deconv2_1')
+    deconv_2_2 = self.conv_layer_with_bn(unpool_2, [3, 3, 128, 128], self.train_phase, 'deconv2_2')
+    deconv_2_1 = self.conv_layer_with_bn(deconv_2_2, [3, 3, 128, 64], self.train_phase, 'deconv2_1')
 
     # Fifth decoder
     unpool_1 = self.unpool_layer2x2(deconv_2_1, pool_1_argmax, tf.shape(conv_1_2))
-    deconv_1_2 = self.deconv_layer(unpool_1, [3, 3, 64, 64], 64, 'deconv1_2')
-    deconv_1_1 = self.deconv_layer(deconv_1_2, [3, 3, 32, 64], 32, 'deconv1_1')
+    deconv_1_2 = self.conv_layer_with_bn(unpool_1, [3, 3, 64, 64], self.train_phase, 'deconv1_2')
+    deconv_1_1 = self.conv_layer_with_bn(deconv_1_2, [3, 3, 64, 32], self.train_phase, 'deconv1_1')
 
     # Produce class scores
-    preds = self.deconv_layer(deconv_1_1, [1, 1, 28, 32], 28, 'preds')
-    self.logits = tf.reshape(preds, (-1, 28))
+    preds = self.conv_layer(deconv_1_1, [1, 1, 32, NUM_CLASSES], 'preds')
+    self.logits = tf.reshape(preds, (-1, NUM_CLASSES))
 
     # Prepare network for training
     cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(
@@ -258,7 +275,7 @@ class SegNet:
 
       # One training step
       image, ground_truth = dataset.next_train_pair()
-      feed_dict = {self.x: [image], self.y: [ground_truth], self.rate: learning_rate}
+      feed_dict = {self.x: [image], self.y: [ground_truth], self.train_phase: True}
       print('run train step: '+str(i))
       self.train_step.run(session=self.session, feed_dict=feed_dict)
 
@@ -270,7 +287,7 @@ class SegNet:
       # Run against validation dataset for 100 iterations
       if i % 100 == 0:
         image, ground_truth = dataset.next_val_pair()
-        feed_dict = {self.x: [image], self.y: [ground_truth], self.rate: learning_rate}
+        feed_dict = {self.x: [image], self.y: [ground_truth], self.train_phase: True}
         val_loss = self.session.run(self.loss, feed_dict=feed_dict)
         val_accuracy = self.session.run(self.accuracy, feed_dict=feed_dict)
         print("%s ---> Validation_loss: %g" % (datetime.datetime.now(), val_loss))
@@ -282,7 +299,7 @@ class SegNet:
   def test(self, learning_rate=1e-6):
     dataset = DatasetReader()
     image, ground_truth = dataset.next_test_pair() 
-    feed_dict = {self.x: [image], self.y: [ground_truth], self.rate: learning_rate}
+    feed_dict = {self.x: [image], self.y: [ground_truth], self.train_phase: False}
     prediction = self.session(self.logits, feed_dict=feed_dict)
     img = Image.fromarray(prediction, 'L')
     img.save('prediction.png')

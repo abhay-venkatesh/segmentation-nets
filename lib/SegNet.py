@@ -68,7 +68,7 @@ class SegNet:
         b_var: Initialized bias variable
     """
     if name not in self.layers:
-      return self.weight_variable(W_shape), self.bias_variable(b_shape)
+      return self.weight_variable(W_shape), self.bias_variable([b_shape])
     else:
       w, b = self.vgg_params[self.layers.index(name)][0][0][0][0]
       init_w = tf.constant(value=np.transpose(w, (1, 0, 2, 3)), dtype=tf.float32, shape=W_shape)

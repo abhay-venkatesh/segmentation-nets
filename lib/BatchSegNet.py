@@ -8,6 +8,7 @@ from PIL import Image
 import datetime
 import os
 from utils.Logger import Logger
+import math
 
 # Only use a single GPU when not testing
 if os.name != 'nt': 
@@ -306,6 +307,7 @@ class BatchSegNet:
         val_accuracy = self.session.run(self.accuracy, feed_dict=feed_dict)
         print("%s ---> Validation_loss: %g" % (datetime.datetime.now(), val_loss))
         print("%s ---> Validation_accuracy: %g" % (datetime.datetime.now(), val_accuracy))
+        self.logger.log("%s ---> Number of epochs: %g\n" % (datetime.datetime.now(), math.floor((i * batch_size)/bdr.num_train)))
         self.logger.log("%s ---> Number of iterations: %g\n" % (datetime.datetime.now(), i))
         self.logger.log("%s ---> Validation_loss: %g\n" % (datetime.datetime.now(), val_loss))
         self.logger.log("%s ---> Validation_accuracy: %g\n" % (datetime.datetime.now(), val_accuracy))

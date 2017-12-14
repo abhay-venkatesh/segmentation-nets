@@ -173,35 +173,35 @@ class BatchSegNet:
 
       # First decoder
       unpool_5 = self.unpool(pool_5, pool_5_argmax)
-      deconv_5_3 = self.deconv_layer(unpool_5, [3, 3, 512, 512], 512, 'deconv5_3')
-      deconv_5_2 = self.deconv_layer(deconv_5_3, [3, 3, 512, 512], 512, 'deconv5_2')
-      deconv_5_1 = self.deconv_layer(deconv_5_2, [3, 3, 512, 512], 512, 'deconv5_1')
+      deconv_5_3 = self.conv_layer_with_bn(unpool_5, [3, 3, 512, 512], 512, 'deconv5_3')
+      deconv_5_2 = self.conv_layer_with_bn(deconv_5_3, [3, 3, 512, 512], 512, 'deconv5_2')
+      deconv_5_1 = self.conv_layer_with_bn(deconv_5_2, [3, 3, 512, 512], 512, 'deconv5_1')
 
       # Second decoder
       unpool_4 = self.unpool(deconv_5_1, pool_4_argmax)
-      deconv_4_3 = self.deconv_layer(unpool_4, [3, 3, 512, 512], 512, 'deconv4_3')
-      deconv_4_2 = self.deconv_layer(deconv_4_3, [3, 3, 512, 512], 512, 'deconv4_2')
-      deconv_4_1 = self.deconv_layer(deconv_4_2, [3, 3, 256, 512], 256, 'deconv4_1')
+      deconv_4_3 = self.conv_layer_with_bn(unpool_4, [3, 3, 512, 512], 512, 'deconv4_3')
+      deconv_4_2 = self.conv_layer_with_bn(deconv_4_3, [3, 3, 512, 512], 512, 'deconv4_2')
+      deconv_4_1 = self.conv_layer_with_bn(deconv_4_2, [3, 3, 512, 256], 256, 'deconv4_1')
 
       # Third decoder
       unpool_3 = self.unpool(deconv_4_1, pool_3_argmax)
-      deconv_3_3 = self.deconv_layer(unpool_3, [3, 3, 256, 256], 256, 'deconv3_3')
-      deconv_3_2 = self.deconv_layer(deconv_3_3, [3, 3, 256, 256], 256, 'deconv3_2')
-      deconv_3_1 = self.deconv_layer(deconv_3_2, [3, 3, 128, 256], 128, 'deconv3_1')
+      deconv_3_3 = self.conv_layer_with_bn(unpool_3, [3, 3, 256, 256], 256, 'deconv3_3')
+      deconv_3_2 = self.conv_layer_with_bn(deconv_3_3, [3, 3, 256, 256], 256, 'deconv3_2')
+      deconv_3_1 = self.conv_layer_with_bn(deconv_3_2, [3, 3, 256, 128], 128, 'deconv3_1')
 
       # Fourth decoder
       unpool_2 = self.unpool(deconv_3_1, pool_2_argmax)
-      deconv_2_2 = self.deconv_layer(unpool_2, [3, 3, 128, 128], 128, 'deconv2_2')
-      deconv_2_1 = self.deconv_layer(deconv_2_2, [3, 3, 64, 128], 64, 'deconv2_1')
+      deconv_2_2 = self.conv_layer_with_bn(unpool_2, [3, 3, 128, 128], 128, 'deconv2_2')
+      deconv_2_1 = self.conv_layer_with_bn(deconv_2_2, [3, 3, 128, 64], 64, 'deconv2_1')
 
       # Fifth decoder
       unpool_1 = self.unpool(deconv_2_1, pool_1_argmax)
-      deconv_1_2 = self.deconv_layer(unpool_1, [3, 3, 64, 64], 64, 'deconv1_2')
-      deconv_1_1 = self.deconv_layer(deconv_1_2, [3, 3, 32, 64], 32, 'deconv1_1')
+      deconv_1_2 = self.conv_layer_with_bn(unpool_1, [3, 3, 64, 64], 64, 'deconv1_2')
+      deconv_1_1 = self.conv_layer_with_bn(deconv_1_2, [3, 3, 64, 32], 32, 'deconv1_1')
 
       # Produce class scores
       # score_1 dimensions: BATCH_SIZE * WIDTH * HEIGHT * NUMBER_OF_CLASSES
-      score_1 = self.deconv_layer(deconv_1_1, [1, 1, self.num_classes, 32], self.num_classes, 'score_1')
+      score_1 = self.conv_layer_with_bn(deconv_1_1, [1, 1, 32, self.num_classes], self.num_classes, 'score_1')
       logits = tf.reshape(score_1, (-1, self.num_classes))
 
       # Prepare network for training

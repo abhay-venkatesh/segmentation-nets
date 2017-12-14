@@ -14,6 +14,7 @@ import math
 if os.name != 'nt': 
   os.environ["CUDA_VISIBLE_DEVICES"] = '1'
 
+# TODO: Not working but batch version is fine
 class SegNet:
   ''' Network described by,
   https://arxiv.org/pdf/1511.00561.pdf '''

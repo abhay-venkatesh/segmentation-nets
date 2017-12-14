@@ -116,25 +116,13 @@ class BatchSegNet:
       ret = tf.scatter_nd(ind_, pool_, shape=tf.cast(flat_output_shape, tf.int64))
       ret = tf.reshape(ret, tf.stack(output_shape))
       return ret
-        
-  def conv_layer(self, x, W_shape, b_shape, name, padding='SAME'):
-    # Pass b_shape as list because need the object to be iterable for the constant initializer
-    W, b = self.vgg_weight_and_bias(name, W_shape, [b_shape])
-    output = tf.nn.conv2d(x, W, strides=[1,1,1,1], padding=padding) + b
-    return tf.nn.relu(output)
 
-  def conv_layer_with_bn(self, x, W_shape, b_shape, name, padding='SAME'):
+  def conv_layer_with_bn(self, x, W_shape, train_phase, name, padding='SAME'):
+    b_shape = W_shape[3]
     W, b = self.vgg_weight_and_bias(name, W_shape, [b_shape])
     output = tf.nn.conv2d(x, W, strides=[1,1,1,1], padding=padding) + b
-    batch_norm = tf.contrib.layers.batch_norm(output)
+    batch_norm = tf.contrib.layers.batch_norm(output, is_training=train_phase)
     return tf.nn.relu(batch_norm)
-
-  def deconv_layer(self, x, W_shape, b_shape, name, padding='SAME'):
-    W = self.weight_variable(W_shape)
-    b = self.bias_variable([b_shape])
-    x_shape = tf.shape(x)
-    out_shape = tf.stack([x_shape[0], x_shape[1], x_shape[2], W_shape[2]])
-    return tf.nn.conv2d_transpose(x, W, out_shape, [1, 1, 1, 1], padding=padding) + b
 
   def build(self):
     with tf.device('/gpu:0'):
@@ -143,75 +131,76 @@ class BatchSegNet:
       # self.y dimensions = BATCH_SIZE * WIDTH * HEIGHT
       self.y = tf.placeholder(tf.int64, shape=(None, None, None))
       expected = tf.expand_dims(self.y, -1)
+      self.train_phase = tf.placeholder(tf.bool, name='train_phase')
       self.rate = tf.placeholder(tf.float32, shape=[])
 
       # First encoder
-      conv_1_1 = self.conv_layer_with_bn(self.x, [3, 3, 3, 64], 64, 'conv1_1')
-      conv_1_2 = self.conv_layer_with_bn(conv_1_1, [3, 3, 64, 64], 64, 'conv1_2')
+      conv_1_1 = self.conv_layer_with_bn(self.x, [3, 3, 3, 64], self.train_phase, 'conv1_1')
+      conv_1_2 = self.conv_layer_with_bn(conv_1_1, [3, 3, 64, 64], self.train_phase, 'conv1_2')
       pool_1, pool_1_argmax = self.pool_layer(conv_1_2)
 
       # Second encoder
-      conv_2_1 = self.conv_layer_with_bn(pool_1, [3, 3, 64, 128], 128, 'conv2_1')
-      conv_2_2 = self.conv_layer_with_bn(conv_2_1, [3, 3, 128, 128], 128, 'conv2_2')
+      conv_2_1 = self.conv_layer_with_bn(pool_1, [3, 3, 64, 128], self.train_phase, 'conv2_1')
+      conv_2_2 = self.conv_layer_with_bn(conv_2_1, [3, 3, 128, 128], self.train_phase, 'conv2_2')
       pool_2, pool_2_argmax = self.pool_layer(conv_2_2)
 
       # Third encoder
-      conv_3_1 = self.conv_layer_with_bn(pool_2, [3, 3, 128, 256], 256, 'conv3_1')
-      conv_3_2 = self.conv_layer_with_bn(conv_3_1, [3, 3, 256, 256], 256, 'conv3_2')
-      conv_3_3 = self.conv_layer_with_bn(conv_3_2, [3, 3, 256, 256], 256, 'conv3_3')
+      conv_3_1 = self.conv_layer_with_bn(pool_2, [3, 3, 128, 256], self.train_phase, 'conv3_1')
+      conv_3_2 = self.conv_layer_with_bn(conv_3_1, [3, 3, 256, 256], self.train_phase, 'conv3_2')
+      conv_3_3 = self.conv_layer_with_bn(conv_3_2, [3, 3, 256, 256], self.train_phase, 'conv3_3')
       pool_3, pool_3_argmax = self.pool_layer(conv_3_3)
 
       # Fourth encoder
-      conv_4_1 = self.conv_layer_with_bn(pool_3, [3, 3, 256, 512], 512, 'conv4_1')
-      conv_4_2 = self.conv_layer_with_bn(conv_4_1, [3, 3, 512, 512], 512, 'conv4_2')
-      conv_4_3 = self.conv_layer_with_bn(conv_4_2, [3, 3, 512, 512], 512, 'conv4_3')
+      conv_4_1 = self.conv_layer_with_bn(pool_3, [3, 3, 256, 512], self.train_phase, 'conv4_1')
+      conv_4_2 = self.conv_layer_with_bn(conv_4_1, [3, 3, 512, 512], self.train_phase, 'conv4_2')
+      conv_4_3 = self.conv_layer_with_bn(conv_4_2, [3, 3, 512, 512], self.train_phase, 'conv4_3')
       pool_4, pool_4_argmax = self.pool_layer(conv_4_3)
 
       # Fifth encoder
-      conv_5_1 = self.conv_layer_with_bn(pool_4, [3, 3, 512, 512], 512, 'conv5_1')
-      conv_5_2 = self.conv_layer_with_bn(conv_5_1, [3, 3, 512, 512], 512, 'conv5_2')
-      conv_5_3 = self.conv_layer_with_bn(conv_5_2, [3, 3, 512, 512], 512, 'conv5_3')
+      conv_5_1 = self.conv_layer_with_bn(pool_4, [3, 3, 512, 512], self.train_phase, 'conv5_1')
+      conv_5_2 = self.conv_layer_with_bn(conv_5_1, [3, 3, 512, 512], self.train_phase, 'conv5_2')
+      conv_5_3 = self.conv_layer_with_bn(conv_5_2, [3, 3, 512, 512], self.train_phase, 'conv5_3')
       pool_5, pool_5_argmax = self.pool_layer(conv_5_3)
 
       # First decoder
       unpool_5 = self.unpool(pool_5, pool_5_argmax)
-      deconv_5_3 = self.conv_layer_with_bn(unpool_5, [3, 3, 512, 512], 512, 'deconv5_3')
-      deconv_5_2 = self.conv_layer_with_bn(deconv_5_3, [3, 3, 512, 512], 512, 'deconv5_2')
-      deconv_5_1 = self.conv_layer_with_bn(deconv_5_2, [3, 3, 512, 512], 512, 'deconv5_1')
+      deconv_5_3 = self.conv_layer_with_bn(unpool_5, [3, 3, 512, 512], self.train_phase, 'deconv5_3')
+      deconv_5_2 = self.conv_layer_with_bn(deconv_5_3, [3, 3, 512, 512], self.train_phase, 'deconv5_2')
+      deconv_5_1 = self.conv_layer_with_bn(deconv_5_2, [3, 3, 512, 512], self.train_phase, 'deconv5_1')
 
       # Second decoder
       unpool_4 = self.unpool(deconv_5_1, pool_4_argmax)
-      deconv_4_3 = self.conv_layer_with_bn(unpool_4, [3, 3, 512, 512], 512, 'deconv4_3')
-      deconv_4_2 = self.conv_layer_with_bn(deconv_4_3, [3, 3, 512, 512], 512, 'deconv4_2')
-      deconv_4_1 = self.conv_layer_with_bn(deconv_4_2, [3, 3, 512, 256], 256, 'deconv4_1')
+      deconv_4_3 = self.conv_layer_with_bn(unpool_4, [3, 3, 512, 512], self.train_phase, 'deconv4_3')
+      deconv_4_2 = self.conv_layer_with_bn(deconv_4_3, [3, 3, 512, 512], self.train_phase, 'deconv4_2')
+      deconv_4_1 = self.conv_layer_with_bn(deconv_4_2, [3, 3, 512, 256], self.train_phase, 'deconv4_1')
 
       # Third decoder
       unpool_3 = self.unpool(deconv_4_1, pool_3_argmax)
-      deconv_3_3 = self.conv_layer_with_bn(unpool_3, [3, 3, 256, 256], 256, 'deconv3_3')
-      deconv_3_2 = self.conv_layer_with_bn(deconv_3_3, [3, 3, 256, 256], 256, 'deconv3_2')
-      deconv_3_1 = self.conv_layer_with_bn(deconv_3_2, [3, 3, 256, 128], 128, 'deconv3_1')
+      deconv_3_3 = self.conv_layer_with_bn(unpool_3, [3, 3, 256, 256], self.train_phase, 'deconv3_3')
+      deconv_3_2 = self.conv_layer_with_bn(deconv_3_3, [3, 3, 256, 256], self.train_phase, 'deconv3_2')
+      deconv_3_1 = self.conv_layer_with_bn(deconv_3_2, [3, 3, 256, 128], self.train_phase, 'deconv3_1')
 
       # Fourth decoder
       unpool_2 = self.unpool(deconv_3_1, pool_2_argmax)
-      deconv_2_2 = self.conv_layer_with_bn(unpool_2, [3, 3, 128, 128], 128, 'deconv2_2')
-      deconv_2_1 = self.conv_layer_with_bn(deconv_2_2, [3, 3, 128, 64], 64, 'deconv2_1')
+      deconv_2_2 = self.conv_layer_with_bn(unpool_2, [3, 3, 128, 128], self.train_phase, 'deconv2_2')
+      deconv_2_1 = self.conv_layer_with_bn(deconv_2_2, [3, 3, 128, 64], self.train_phase, 'deconv2_1')
 
       # Fifth decoder
       unpool_1 = self.unpool(deconv_2_1, pool_1_argmax)
-      deconv_1_2 = self.conv_layer_with_bn(unpool_1, [3, 3, 64, 64], 64, 'deconv1_2')
-      deconv_1_1 = self.conv_layer_with_bn(deconv_1_2, [3, 3, 64, 32], 32, 'deconv1_1')
+      deconv_1_2 = self.conv_layer_with_bn(unpool_1, [3, 3, 64, 64], self.train_phase, 'deconv1_2')
+      deconv_1_1 = self.conv_layer_with_bn(deconv_1_2, [3, 3, 64, 32], self.train_phase, 'deconv1_1')
 
       # Produce class scores
       # score_1 dimensions: BATCH_SIZE * WIDTH * HEIGHT * NUMBER_OF_CLASSES
-      score_1 = self.conv_layer_with_bn(deconv_1_1, [1, 1, 32, self.num_classes], self.num_classes, 'score_1')
+      score_1 = self.conv_layer_with_bn(deconv_1_1, [1, 1, 32, self.num_classes], self.train_phase, 'score_1')
       logits = tf.reshape(score_1, (-1, self.num_classes))
 
-      # Prepare network for training
+      # Prepare network outputs
       cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(
         labels=tf.reshape(expected, [-1]), logits=logits, name='x_entropy')
       self.loss = tf.reduce_mean(cross_entropy, name='x_entropy_mean')
       self.train_step = tf.train.AdamOptimizer(self.rate).minimize(self.loss)
-
+      
       # Metrics
       self.prediction = tf.argmax(score_1, axis=3, name="prediction")
       self.accuracy = tf.contrib.metrics.accuracy(self.prediction, self.y, name='accuracy')
@@ -232,7 +221,7 @@ class BatchSegNet:
     return global_step
 
   
-  def train(self, num_iterations=10000, learning_rate=1e-6, batch_size=5):
+  def train(self, num_iterations=10000, learning_rate=0.1, batch_size=5):
     current_step = self.restore_session()
 
     bdr = BatchDatasetReader(self.dataset_directory, 480, 320, current_step, batch_size)
@@ -242,7 +231,7 @@ class BatchSegNet:
 
       # One training step
       images, ground_truths = bdr.next_training_batch()
-      feed_dict = {self.x: images, self.y: ground_truths, self.rate: learning_rate}
+      feed_dict = {self.x: images, self.y: ground_truths, self.train_phase: 1, self.rate: learning_rate}
       print('run train step: ' + str(i))
       self.train_step.run(session=self.session, feed_dict=feed_dict)
 
@@ -254,7 +243,7 @@ class BatchSegNet:
       # Run against validation dataset for 100 iterations
       if i % 100 == 0:
         images, ground_truths = bdr.next_val_batch()
-        feed_dict = {self.x: images, self.y: ground_truths, self.rate: learning_rate}
+        feed_dict = {self.x: images, self.y: ground_truths, self.train_phase: 1, self.rate: learning_rate}
         val_loss = self.session.run(self.loss, feed_dict=feed_dict)
         val_accuracy = self.session.run(self.accuracy, feed_dict=feed_dict)
         print("%s ---> Validation_loss: %g" % (datetime.datetime.now(), val_loss))
@@ -268,7 +257,7 @@ class BatchSegNet:
         # Save the model variables
         self.saver.save(self.session, self.checkpoint_directory + 'segnet', global_step = i)
 
-  def test(self, learning_rate=1e-6,):
+  def test(self, learning_rate=0.1):
 
     # Get trained weights and biases
     self.restore_session()
@@ -276,7 +265,7 @@ class BatchSegNet:
     dr = DatasetReader(480, 320)
 
     image, ground_truth = dr.next_test_pair()
-    feed_dict = {self.x: [image], self.y: [ground_truth], self.rate: learning_rate}
+    feed_dict = {self.x: [image], self.y: [ground_truth], self.train_phase: 0, self.rate: learning_rate}
     segmentation = np.squeeze(self.session.run(self.prediction, feed_dict=feed_dict))
     dp = DataPostprocessor()
     dp.write_out(segmentation, ground_truth)

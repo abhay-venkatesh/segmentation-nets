@@ -273,11 +273,9 @@ class BatchSegNet:
 
     for i in range(math.min(dr.test_data_size, 10)):
       image, ground_truth = dr.next_test_pair()
-      feed_dict = {self.x: [image], self.y: [ground_truth], self.train_phase: 0, self.rate: learning_rate}
+      # TODO: Fix self.train_phase = 0 not working issue
+      feed_dict = {self.x: [image], self.y: [ground_truth], self.train_phase: 1, self.rate: learning_rate}
       segmentation = np.squeeze(self.session.run(self.prediction, feed_dict=feed_dict))
       dp = DataPostprocessor()
       dp.write_out(i, image, segmentation, ground_truth, current_step)
-
-    
-
 

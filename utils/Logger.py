@@ -1,6 +1,12 @@
 import os
 import csv
-import matplotlib.pyplot as plt
+if os.name != 'nt':
+  import matplotlib
+  matplotlib.use('Agg')
+  import matplotlib.pyplot as plt
+else:
+  import matplotlib.pyplot as plt
+	
 
 class Logger:
 

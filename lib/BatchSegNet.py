@@ -6,6 +6,7 @@ import cv2
 from utils.BatchDatasetReader import BatchDatasetReader
 from utils.DatasetReader import DatasetReader
 from utils.DataPostprocessor import DataPostprocessor
+from utils.OutsideDataFeeder import OutsideDataFeeder
 from PIL import Image
 import datetime
 import os
@@ -279,4 +280,21 @@ class BatchSegNet:
       segmentation = np.squeeze(self.session.run(self.prediction, feed_dict=feed_dict))
       dp = DataPostprocessor()
       dp.write_out(i, image, segmentation, ground_truth, current_step)
+
+  def test_outside_dataset(self, learning_rate=0.1):
+
+    # Get trained weights and biases
+    current_step = self.restore_session()
+
+    dr = OutsideDataFeeder(480, 320, './datasets/amfam_dataset/')
+
+    for i in range(min(dr.test_data_size, 10)):
+      image = dr.next_test_image()
+      ground_truth = np.zeros((480, 320))
+      # TODO: Fix self.train_phase = 0 not working issue
+      feed_dict = {self.x: [image], self.y: [ground_truth], self.train_phase: 1, self.rate: learning_rate}
+      segmentation = np.squeeze(self.session.run(self.prediction, feed_dict=feed_dict))
+      dp = DataPostprocessor()
+      dp.write_out(i, image, segmentation, current_step)
+
 

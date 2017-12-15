@@ -271,7 +271,7 @@ class BatchSegNet:
 
     dr = DatasetReader(480, 320)
 
-    for i in range(math.min(dr.test_data_size, 10)):
+    for i in range(min(dr.test_data_size, 10)):
       image, ground_truth = dr.next_test_pair()
       # TODO: Fix self.train_phase = 0 not working issue
       feed_dict = {self.x: [image], self.y: [ground_truth], self.train_phase: 1, self.rate: learning_rate}

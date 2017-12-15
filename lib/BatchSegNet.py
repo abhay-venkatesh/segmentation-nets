@@ -262,6 +262,7 @@ class BatchSegNet:
       # Print outputs every 1000 iterations
       if i % 1000 == 0:
         self.test(learning_rate)
+        self.logger.graph_training_stats()
 
 
   def test(self, learning_rate=0.1):

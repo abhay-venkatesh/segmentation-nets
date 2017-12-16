@@ -41,5 +41,19 @@ class DataPostprocessor:
     colored_ground_truth = self.segmentation_colors(ground_truth)
     cv2.imwrite('./outputs/ground_truth-' + str(i) + '.png', colored_ground_truth)
 
+  def write_out(self, i, image, segmentation, iterations):
+    """
+      Args: 
+        i: Image index
+        image: The original image
+        segmentation: A numpy array that represents a semantic segmentation of an image
+        iterations: Number of training steps
+
+      Writes a colored segmentation, and its corresponding ground truth to disk
+    """
+    cv2.imwrite('./outputs/image-real-' + str(i) + '.png', image)
+    colored_segmentation = self.segmentation_colors(segmentation)
+    cv2.imwrite('./outputs/predicted-real-' + str(i) + '-iter' + str(iterations) + '.png', colored_segmentation)
+
 
 

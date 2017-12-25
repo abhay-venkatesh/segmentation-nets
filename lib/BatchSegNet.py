@@ -10,7 +10,6 @@ from utils.OutsideDataFeeder import OutsideDataFeeder
 from PIL import Image
 import datetime
 import os
-from utils.Logger import Logger
 import math
 
 # Only use a single GPU when not testing
@@ -54,7 +53,11 @@ class BatchSegNet:
     # Make saving trained weights and biases possible
     self.saver = tf.train.Saver(max_to_keep = 5, keep_checkpoint_every_n_hours = 1)
     self.checkpoint_directory = './checkpoints/'
-    self.logger = Logger()
+
+    # Add summary logging capability
+    self.train_writer = tf.summary.FileWriter('./summaries' + '/train', self.session.graph)
+    self.val_writer = tf.summary.FileWriter('./summaries' + '/val', self.session.graph)
+
 
   def vgg_weight_and_bias(self, name, W_shape, b_shape):
     """ 
@@ -206,6 +209,12 @@ class BatchSegNet:
       self.prediction = tf.argmax(score_1, axis=3, name="prediction")
       self.accuracy = tf.contrib.metrics.accuracy(self.prediction, self.y, name='accuracy')
 
+      # Prepare for summaries
+      tf.summary.scalar('loss', self.loss)
+      tf.summary.scalar('accuracy', self.accuracy)
+      self.merged = tf.summary.merge_all()
+
+
   def restore_session(self):
     global_step = 0
 
@@ -240,6 +249,8 @@ class BatchSegNet:
       if i % 10 == 0:
         train_loss = self.session.run(self.loss, feed_dict=feed_dict)
         print("Step: %d, Train_loss:%g" % (i, train_loss))
+        summary, _ = self.session.run([self.merged, self.train_step], feed_dict=feed_dict)
+        self.train_writer.add_summary(summary, i)
 
       # Run against validation dataset for 100 iterations
       if i % 100 == 0:
@@ -250,12 +261,8 @@ class BatchSegNet:
         print("%s ---> Validation_loss: %g" % (datetime.datetime.now(), val_loss))
         print("%s ---> Validation_accuracy: %g" % (datetime.datetime.now(), val_accuracy))
 
-        self.logger.log("%s ---> Number of epochs: %g\n" % (datetime.datetime.now(), math.floor((i * batch_size)/bdr.num_train)))
-        self.logger.log("%s ---> Number of iterations: %g\n" % (datetime.datetime.now(), i))
-        self.logger.log("%s ---> Validation_loss: %g\n" % (datetime.datetime.now(), val_loss))
-        self.logger.log("%s ---> Validation_accuracy: %g\n" % (datetime.datetime.now(), val_accuracy))
-
-        self.logger.log_for_graphing(i, val_loss, val_accuracy)
+        summary, _ = self.session.run([self.merged, self.accuracy], feed_dict=feed_dict)
+        self.val_writer.add_summary(summary, i)
 
         # Save the model variables
         self.saver.save(self.session, self.checkpoint_directory + 'segnet', global_step = i)
@@ -263,7 +270,6 @@ class BatchSegNet:
       # Print outputs every 1000 iterations
       if i % 1000 == 0:
         self.test(learning_rate)
-        self.logger.graph_training_stats()
 
 
   def test(self, learning_rate=0.1):

@@ -107,6 +107,21 @@ class DataPreprocessor:
 
     return True
 
+  def load_image(self, file_path, WIDTH, HEIGHT):
+    """
+      Args:
+        file_path: Path to file to be loaded
+        WIDTH:
+        HEIGHT:
+
+      Returns:
+        A numpy array representing the image
+    """
+    image = cv2.imread(file_path)
+    image = cv2.resize(image, (WIDTH, HEIGHT), interpolation=cv2.INTER_NEAREST)
+    image = np.float32(image)
+    return image
+
 def main():
   dataProcessor = DataPreprocessor()
   dataProcessor.preprocess_reduced_classes() 

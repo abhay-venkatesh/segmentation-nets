@@ -2,6 +2,7 @@ import json
 import cv2
 import numpy as np
 from ast import literal_eval
+from multipledispatch import dispatch
 
 class DataPostprocessor:
 
@@ -24,6 +25,7 @@ class DataPostprocessor:
           seg_color[i][j] = [color[0], color[1], color[2]]
     return seg_color
 
+  @dispatch(object, object, object, object, object)
   def write_out(self, i, image, segmentation, ground_truth, iterations):
     """
       Args: 
@@ -41,6 +43,7 @@ class DataPostprocessor:
     colored_ground_truth = self.segmentation_colors(ground_truth)
     cv2.imwrite('./outputs/ground_truth-' + str(i) + '.png', colored_ground_truth)
 
+  @dispatch(object, object, object, object)
   def write_out(self, i, image, segmentation, iterations):
     """
       Args: 

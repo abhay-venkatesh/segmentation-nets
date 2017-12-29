@@ -70,7 +70,7 @@ class BatchSegNet:
       
       Args:
         name: name of the layer for which you want to initialize weights
-        W_shape: shape of weights tensor expected
+        W_shape: shape of weights tensor exkpected
         b_shape: shape of bias tensor expected
       returns:
         w_var: Initialized weight variable
@@ -280,7 +280,6 @@ class BatchSegNet:
         self.logger.log("%s ---> Validation_loss: %g\n" % (datetime.datetime.now(), val_loss))
         self.logger.log("%s ---> Validation_accuracy: %g\n" % (datetime.datetime.now(), val_accuracy))
         self.logger.log_for_graphing(i, val_loss, val_accuracy)
-        
 
         # Save the model variables
         self.saver.save(self.session, self.checkpoint_directory + 'segnet', global_step = i)

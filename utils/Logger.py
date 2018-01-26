@@ -23,15 +23,15 @@ class Logger:
       with open('./logs/logfile-' + str(self.session), 'a') as outfile:
         outfile.write(message)
 
-  def log_for_graphing(self, iterations, loss, accuracy):
+  def log_for_graphing(self, iterations, loss, accuracy, mean_IoU):
     if not os.path.exists('./logs/logfile-graphing-' + str(self.session)):
       with open('./logs/logfile-graphing-' + str(self.session), 'w', newline='') as outfile:
         writer = csv.writer(outfile, delimiter=',')
-        writer.writerow([iterations, loss, accuracy])
+        writer.writerow([iterations, loss, accuracy, mean_IoU])
     else:
       with open('./logs/logfile-graphing-' + str(self.session), 'a', newline='') as outfile:
         writer = csv.writer(outfile, delimiter=',')
-        writer.writerow([iterations, loss, accuracy])
+        writer.writerow([iterations, loss, accuracy, mean_IoU])
 
   def graph_training_stats(self):
     if not os.path.exists('./logs/logfile-graphing-' + str(self.session)):
@@ -42,10 +42,12 @@ class Logger:
         iterations = []
         losses = []
         accuracies = []
+        mean_IoUs = []
         for row in reader:
           iterations.append(int(row[0]))
           losses.append(float(row[1]))
           accuracies.append(float(row[2]))
+          mean_IoUs.append(float(row[3]))
 
         if not os.path.exists('./metrics/'):
           os.makedirs('./metrics/')
@@ -61,6 +63,12 @@ class Logger:
         plt.ylabel('Accuracy')
         plt.xlabel('Iterations')
         plt.savefig('./metrics/iterations_vs_accuracy.png')
+
+        plt.figure(2)
+        plt.plot(iterations, mean_IoUs)
+        plt.ylabel('mean_IoU')
+        plt.xlabel('Iterations')
+        plt.savefig('./metrics/iterations_vs_mean_IoU.png')
 
 def main():
   logger = Logger()

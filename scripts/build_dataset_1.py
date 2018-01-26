@@ -1,3 +1,17 @@
+"""
+Script that constructs a sub-dataset from UnrealNeighborhood-11Class-20View dataset.
+
+We call the new sub-dataset: UnrealNeighborhood-11Class-StreetPrimary-0.15
+
+Street View: 6,500 images 
+
+* Sequences of non-street view are attached to some street view (a full sequence of the same scene). 
+Non-Street View (19 views)
+- 50 per view
+Total: 950 images
+
+Ratio of Non-Street View to Street View: 19/130 ~ 15% 
+"""
 import json
 import cv2
 import numpy as np
@@ -28,8 +42,15 @@ for color in color2class:
   color_map[literal_eval(color)] = class2num[color2class[color]]
 
 def convert_image(dirName, fname, counter):
-  ''' Takes a directory name, file name and a counter and 
-  converts the corresponding colored segmentation to grayscale.
+  ''' 
+    Args:
+      dirName: Name of directory to output to
+      fname: Name of file getting converted
+      counter: Index of the file in the dataset
+
+    Output:
+      Converts colored segmentation to grayscale,
+      and writes to the output directory. 
 
   Writes the converted image to the data folder as well.
   Output image has pixel values from 0-27, 0 if no class
@@ -45,26 +66,46 @@ def convert_image(dirName, fname, counter):
     match_region=match_color(img,key)
     if not (match_region is None):
       res = (np.multiply(res, ~match_region)) + match_region*color_map[key]
-  outfile = '../datasets/unreal_randomyaw/ground_truths/seg' + str(counter) + '.png' 
+  outfile = '../datasets/UnrealNeighborhood-11Class-StreetPrimary-0.15/ground_truths/seg' + str(counter) + '.png' 
   print(outfile)
   cv2.imwrite(outfile,res*8)
-  image_outfile = '../datasets/unreal_randomyaw/images/pic' + str(counter) + '.png'
+  image_outfile = '../datasets/UnrealNeighborhood-11Class-StreetPrimary-0.15/images/pic' + str(counter) + '.png'
   copyfile(filePath.replace('seg','pic'), image_outfile) 
 
-def preprocess():
-  directory = '../datasets/unreal_randomyaw/' 
-  if not os.path.exists(directory):
-    os.makedirs(directory) 
+def build():
 
-  rootDir = "../../../../dataset_randomyaw/"
+  # Build output directories
+  output_directory = '../datasets/UnrealNeighborhood-11Class-StreetPrimary-0.15/' 
+  if not os.path.exists(output_directory):
+    os.makedirs(output_directory) 
+  ground_truths_directory = '../datasets/UnrealNeighborhood-11Class-StreetPrimary-0.15/ground_truths/'
+  if not os.path.exists(ground_truths_directory):
+    os.makedirs(ground_truths_directory) 
+  scene_image_directory = '../datasets/UnrealNeighborhood-11Class-StreetPrimary-0.15/images/'
+  if not os.path.exists(scene_image_directory):
+    os.makedirs(scene_image_directory) 
+
+  source_directory = "../../../../UnrealEngineSource/"
   counter = 0
-  for dirName, subdirList, fileList in os.walk(rootDir):
+  non_street_view_count = 0
+  for dirName, subdirList, fileList in os.walk(source_directory):
     print('Found directory: %s' % dirName)
+
+    sequence_counter = 0
     for fname in fileList:
 
-      if fname == 'seg0.png':
+      # For 50 scenes, print the whole sequence of scenes
+      if counter % 50 == 0 and non_street_view_count < 50:
+        convert_image(dirName, fname, counter + sequence_counter)
+        sequence_counter += 1
+        if sequence_counter == 20:
+          counter += 20
+          sequence_counter = 0
+          non_street_view_count += 1
+      else if fname == 'seg0.png':
         convert_image(dirName, fname, counter)
         counter += 1
+
 
 def convert_for_test():
   directory = './converted_data' 
@@ -105,7 +146,7 @@ def check_converted_image(dirName, fname):
   return True
 
 def main():
-  preprocess() 
+  build() 
 
 
 if __name__ == "__main__":

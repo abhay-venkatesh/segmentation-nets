@@ -1,3 +1,10 @@
+"""
+NOTE: Utils, to me, are subroutines that are designed to be called from another program.
+Hence, it is best that this piece of code, be represented as a script rather than an object 
+or util that might be called from another program.
+
+Change this later on.
+"""
 import json
 import cv2
 import numpy as np

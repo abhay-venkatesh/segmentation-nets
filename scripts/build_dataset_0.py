@@ -6,6 +6,8 @@ Size: 5000
 Train: 3500
 Validation: 1450
 Test: 50
+
+NOTE: THIS SCRIPT IS DEPRECATED. LOOK AT UTILS DIR FOR DataPreprocessor.py
 """
 import json
 import cv2

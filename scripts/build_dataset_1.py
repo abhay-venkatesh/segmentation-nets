@@ -35,8 +35,8 @@ def match_color(object_mask, target_color, tolerance=3):
 
 # Get color to class and class to number maps
 # Used in convert_image
-color2class = json.load(open('finalColorsToClasses.json','r'))
-class2num = json.load(open('finalClassesToInt.json','r'))
+color2class = json.load(open('../dat/reducedColorsToClasses.json','r'))
+class2num = json.load(open('../dat/reducedClassesToInt.json','r'))
 color_map = {}
 for color in color2class:
   color_map[literal_eval(color)] = class2num[color2class[color]]
@@ -57,6 +57,7 @@ def convert_image(dirName, fname, counter):
   and 1-27 are classes as described in the finalClassesToInt json file. '''
   convertedPath = os.path.abspath(dirName)
   filePath = convertedPath + '\\' + fname
+  print(filePath)
   img = cv2.imread(filePath)
   img = cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
   [m,n] = img.shape[:2]
@@ -67,7 +68,6 @@ def convert_image(dirName, fname, counter):
     if not (match_region is None):
       res = (np.multiply(res, ~match_region)) + match_region*color_map[key]
   outfile = '../datasets/UnrealNeighborhood-11Class-StreetPrimary-0.15/ground_truths/seg' + str(counter) + '.png' 
-  print(outfile)
   cv2.imwrite(outfile,res*8)
   image_outfile = '../datasets/UnrealNeighborhood-11Class-StreetPrimary-0.15/images/pic' + str(counter) + '.png'
   copyfile(filePath.replace('seg','pic'), image_outfile) 
@@ -86,6 +86,8 @@ def build():
     os.makedirs(scene_image_directory) 
 
   source_directory = "../../../../UnrealEngineSource/"
+
+  # Walk through the DatasetSource and pick samples
   counter = 0
   non_street_view_count = 0
   for dirName, subdirList, fileList in os.walk(source_directory):
@@ -93,19 +95,17 @@ def build():
 
     sequence_counter = 0
     for fname in fileList:
-
-      # For 50 scenes, print the whole sequence of scenes
-      if counter % 50 == 0 and non_street_view_count < 50:
+      # For first 50 scenes, print the whole sequence of scenes
+      if non_street_view_count < 50 and "seg" in fname:
         convert_image(dirName, fname, counter + sequence_counter)
         sequence_counter += 1
         if sequence_counter == 20:
           counter += 20
           sequence_counter = 0
           non_street_view_count += 1
-      else if fname == 'seg0.png':
+      elif fname == 'seg0.png':
         convert_image(dirName, fname, counter)
         counter += 1
-
 
 def convert_for_test():
   directory = './converted_data' 

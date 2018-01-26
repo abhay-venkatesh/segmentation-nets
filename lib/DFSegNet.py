@@ -49,6 +49,7 @@ class DFSegNet:
         config = tf.ConfigProto(allow_soft_placement=True)
         self.session = tf.Session(config=config)
         self.session.run(tf.global_variables_initializer())
+        self.session.run(tf.local_variables_initializer())
 
         # Make saving trained weights and biases possible
         self.saver = tf.train.Saver(max_to_keep = 5, 
@@ -148,42 +149,67 @@ class DFSegNet:
                                                   is_training=train_phase)
         return tf.nn.relu(batch_norm)
 
-    def gen_dynamic_filter(self, feature_maps, filter_shape):
-        feature_map = tf.reduce_mean(feature_maps, axis=3)
-        print(feature_maps)
-        length = feature_map.get_shape()[1]*feature_map.get_shape()[2]
-        features = tf.reshape(feature_map, [-1,int(length)])
+    def gen_dynamic_filter(self, pooled_layer, filter_shape):
+        '''
+            filter_shape=[3, 3, 512, 512]
+
+            tf.reduce_mean(pool_5, axis=3)
+            pool_5 shape = NUM_BATCHES * WIDTH * HEIGHT * 512
+            feature_map shape = NUM_BATCHES * WIDTH * HEIGHT
+
+        '''
+        # feature_map shape = BATCH_SIZE * WIDTH * HEIGHT
+        feature_map = tf.reduce_mean(pooled_layer, axis=3)
+        # feature_map_shape = tf.shape(feature_map)
+        length = feature_map.get_shape()[1] * feature_map.get_shape()[2]
+        # TODO: Make this workable for any image shape
+        # length = 480 * 320
+        features = tf.reshape(feature_map, [-1, int(length)])
+        # features_shape = tf.shape(features)
+        # features.set_shape([features_shape[0], features_shape[1]])
         fc1 = tf.contrib.layers.fully_connected(features, 64)
         fc2 = tf.contrib.layers.fully_connected(fc1, 128)
-        fc3 = tf.contrib.layers.fully_connected(fc2, filter_shape[0]*filter_shape[1], activation_fn=None)
+        fc3 = tf.contrib.layers.fully_connected(fc2, 
+                                                filter_shape[0]*filter_shape[1], 
+                                                activation_fn=None)
+        fc3 = tf.reduce_mean(fc3, axis=0)
         filt = tf.reshape(fc3, filter_shape[0:2])
         filt = tf.expand_dims(filt,2)
         filt = tf.expand_dims(filt,3)
         filt = tf.tile(filt,[1,1,filter_shape[2],filter_shape[3]])
         return filt 
 
-    def dynamic_conv_layer(bottom, filter_shape, dynamic_filter, name, strides=[1,1,1,1], padding="SAME"):
+    def dynamic_conv_layer(self, bottom, filter_shape, dynamic_filter, name, 
+                           strides=[1,1,1,1], padding="SAME"):
         init_w = tf.truncated_normal(filter_shape, stddev=0.2)
         init_b = tf.constant_initializer(value=0.0, dtype=tf.float32)
-        filt = tf.get_variable(name="%s_w"%name,initializer=init_w,dtype=tf.float32)
+        filt = tf.get_variable(name="%s_w"%name,
+                               initializer=init_w,
+                               dtype=tf.float32)
         filt = tf.add(filt, dynamic_filter)
-        conv = tf.nn.conv2d(bottom,filter=filt,strides=strides,padding=padding,name=name)
-        bias = tf.get_variable(name="%s_b"%name,initializer=init_b,shape=[filter_shape[-1]],dtype=tf.float32)
+        conv = tf.nn.conv2d(bottom,filter=filt,strides=strides,padding=padding,
+                                   name=name)
+        bias = tf.get_variable(name="%s_b"%name,initializer=init_b,
+                               shape=[filter_shape[-1]],dtype=tf.float32)
         return tf.nn.bias_add(conv, bias)
 
     def build(self):
         with tf.device('/gpu:0'):
             # Declare placeholders
-            self.x = tf.placeholder(tf.float32, shape=(None, None, None, 3))
+            # self.x dimensions = BATCH_SIZE * HEIGHT * WIDTH * NUM_CHANNELS
+            # TODO: Make flexible for image sizes
+            self.x = tf.placeholder(tf.float32, shape=[None, 320, 480, 3])
             # self.y dimensions = BATCH_SIZE * WIDTH * HEIGHT
-            self.y = tf.placeholder(tf.int64, shape=(None, None, None))
+            self.y = tf.placeholder(tf.int64, shape=[None, 320, 480])
             expected = tf.expand_dims(self.y, -1)
             self.train_phase = tf.placeholder(tf.bool, name='train_phase')
             self.rate = tf.placeholder(tf.float32, shape=[])
 
             # First encoder
+            # conv_1_1 shape = BATCH_SIZE * HEIGHT * WIDTH * 64
             conv_1_1 = self.conv_layer_with_bn(self.x, [3, 3, 3, 64], 
                                                self.train_phase, 'conv1_1')
+            conv_1_1_shape = tf.shape(conv_1_1)
             conv_1_2 = self.conv_layer_with_bn(conv_1_1, [3, 3, 64, 64], 
                                                self.train_phase, 'conv1_2')
             pool_1, pool_1_argmax = self.pool_layer(conv_1_2)
@@ -220,11 +246,15 @@ class DFSegNet:
                                                self.train_phase, 'conv5_2')
             conv_5_3 = self.conv_layer_with_bn(conv_5_2, [3, 3, 512, 512], 
                                                self.train_phase, 'conv5_3')
+            # pool_5 shape = BATCH_SIZE * HEIGHT * WIDTH * 512
             pool_5, pool_5_argmax = self.pool_layer(conv_5_3)
 
             # Dynamic Filtering
-            df = self.gen_dynamic_filter(feature_maps=pool_5,filter_shape=[3, 3, 512, 512])
-            pool_5 = self.dynamic_conv_layer(pool_5, filter_shape=[3, 3, 512, 512], dynamic_filter=df, name="conv_d")
+            df = self.gen_dynamic_filter(pool_5, 
+                                         filter_shape=[3, 3, 512, 512])
+            pool_5 = self.dynamic_conv_layer(pool_5, 
+                                             filter_shape=[3, 3, 512, 512], 
+                                             dynamic_filter=df, name="conv_d")
 
             # First decoder
             unpool_5 = self.unpool(pool_5, pool_5_argmax)
@@ -268,7 +298,7 @@ class DFSegNet:
                                                  self.train_phase, 'deconv1_1')
 
             # Produce class scores
-            # score_1 dimensions: BATCH_SIZE * WIDTH * HEIGHT * NUM_CLASSES
+            # score_1 dimensions: BATCH_SIZE * HEIGHT * WIDTH * NUM_CLASSES
             score_1 = self.conv_layer_with_bn(deconv_1_1, 
                                               [1, 1, 32, self.num_classes], 
                                               self.train_phase, 
@@ -286,12 +316,13 @@ class DFSegNet:
             
             # Metrics
             self.prediction = tf.argmax(score_1, axis=3, name="prediction")
-            self.accuracy = tf.contrib.metrics.streaming_accuracy(self.prediction, 
+            self.accuracy = tf.contrib.metrics.accuracy(self.prediction, 
                                                         self.y, 
                                                         name='accuracy')
             self.mean_IoU = tf.contrib.metrics.streaming_mean_iou(self.prediction, 
-                                                        self.y, 
-                                                        name='accuracy')
+                                                        self.y,
+                                                        self.num_classes, 
+                                                        name='mean_IoU')
 
             # Prepare for summaries
             """
@@ -352,7 +383,7 @@ class DFSegNet:
                 val_loss = self.session.run(self.loss, feed_dict=feed_dict)
                 val_accuracy = self.session.run(self.accuracy, 
                                                 feed_dict=feed_dict)
-                val_mean_IoU = self.session.run(self.mean_IoU, 
+                val_mean_IoU, update_op = self.session.run(self.mean_IoU, 
                                                 feed_dict=feed_dict)
                 print("%s ---> Validation_loss: %g" % (datetime.datetime.now(), 
                                                        val_loss))
@@ -373,7 +404,7 @@ class DFSegNet:
                                  (datetime.datetime.now(), val_loss))
                 self.logger.log("%s ---> Validation_accuracy: %g\n" % 
                                  (datetime.datetime.now(), val_accuracy))
-                self.logger.log_for_graphing(i, val_loss, val_accuracy)
+                self.logger.log_for_graphing(i, val_loss, val_accuracy, val_mean_IoU)
 
                 # Save the model variables
                 self.saver.save(self.session, 

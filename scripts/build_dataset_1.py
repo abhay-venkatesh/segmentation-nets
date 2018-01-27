@@ -134,6 +134,27 @@ def convert_for_test():
         copyfile(filePath.replace('seg','pic'), outfile.replace('seg','pic')) 
         counter += 1         
 
+def print_file_walk():
+  source_directory = "../../../../UnrealEngineSource/"
+
+  # Walk through the DatasetSource and pick samples
+  counter = 0
+  non_street_view_count = 0
+  for dirName, subdirList, fileList in os.walk(source_directory):
+    sequence_counter = 0
+    for fname in fileList:
+      # For first 50 scenes, print the whole sequence of scenes
+      if non_street_view_count < 50 and "seg" in fname:
+        print(dirName + '\\' + fname)
+        sequence_counter += 1
+        if sequence_counter == 20:
+          counter += 20
+          sequence_counter = 0
+          non_street_view_count += 1
+      elif fname == 'seg0.png':
+        print(dirName + '\\' + fname)
+        counter += 1
+
 def check_converted_image(dirName, fname):
   convertedPath = os.path.abspath(dirName)
   filePath = convertedPath + '\\' + fname
@@ -147,6 +168,7 @@ def check_converted_image(dirName, fname):
 
 def main():
   build() 
+  # print_file_walk()
 
 
 if __name__ == "__main__":

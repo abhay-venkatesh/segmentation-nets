@@ -164,7 +164,7 @@ class EDSegNet:
                                output_shape=tf.shape(en_pool1), name="de_conv1")
         de_conv2 = deconvLayer(de_conv1, filter_shape=[3,3,C,2*C], 
                                output_shape=tf.shape(feature_maps), name="de_conv2")
-    return de_conv2
+        return de_conv2
 
     def build(self):
         with tf.device('/gpu:0'):

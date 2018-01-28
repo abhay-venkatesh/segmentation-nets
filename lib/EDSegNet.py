@@ -149,7 +149,7 @@ class EDSegNet:
                                                   is_training=train_phase)
         return tf.nn.relu(batch_norm)
 
-    def conv_layer(bottom, filter_shape, name, strides=[1,1,1,1], padding="SAME"):
+    def conv_layer(self, bottom, filter_shape, name, strides=[1,1,1,1], padding="SAME"):
         init_w = tf.truncated_normal(filter_shape, stddev=0.2)
         init_b = tf.constant_initializer(value=0.0, dtype=tf.float32)
         filt = tf.get_variable(name="%s_w"%name,initializer=init_w,dtype=tf.float32)
@@ -157,7 +157,7 @@ class EDSegNet:
         bias = tf.get_variable(name="%s_b"%name,initializer=init_b,shape=[filter_shape[-1]],dtype=tf.float32)
         return tf.nn.bias_add(conv, bias)
 
-    def deconv_layer(bottom, filter_shape, output_shape, name, strides=[1,2,2,1], padding="SAME"):
+    def deconv_layer(self, bottom, filter_shape, output_shape, name, strides=[1,2,2,1], padding="SAME"):
         width = filter_shape[0]
         heigh = filter_shape[0]
         f = ceil(width/2.0)
@@ -179,18 +179,18 @@ class EDSegNet:
 
     def mini_encoder_decoder(self, feature_maps):
         C = feature_maps.get_shape()[3].value
-        en_conv1 = conv_layer(feature_maps, filter_shape=[3,3,C,2*C], 
+        en_conv1 = self.conv_layer(feature_maps, filter_shape=[3,3,C,2*C], 
                              name="en_conv1")
         en_relu1 = tf.nn.relu(en_conv1, name="en_relu1")
         en_pool1 = tf.nn.max_pool(en_relu1, ksize=[1,2,2,1], strides=[1,2,2,1],
                                   padding="SAME", name="en_pool1")
-        en_conv2 = conv_layer(en_pool1, filter_shape=[3,3,2*C,4*C], name="en_conv2")
+        en_conv2 = self.conv_layer(en_pool1, filter_shape=[3,3,2*C,4*C], name="en_conv2")
         en_relu2 = tf.nn.relu(en_conv2, name="en_relu2")
         en_pool2 = tf.nn.max_pool(en_relu2, ksize=[1,2,2,1], strides=[1,2,2,1],
                                   padding="SAME", name="en_pool2")
-        de_conv1 = deconv_layer(en_pool2, filter_shape=[3,3,2*C,4*C], 
+        de_conv1 = self.deconv_layer(en_pool2, filter_shape=[3,3,2*C,4*C], 
                                output_shape=tf.shape(en_pool1), name="de_conv1")
-        de_conv2 = deconv_layer(de_conv1, filter_shape=[3,3,C,2*C], 
+        de_conv2 = self.deconv_layer(de_conv1, filter_shape=[3,3,C,2*C], 
                                output_shape=tf.shape(feature_maps), name="de_conv2")
         return de_conv2
 

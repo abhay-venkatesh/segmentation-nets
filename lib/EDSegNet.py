@@ -150,20 +150,20 @@ class EDSegNet:
         return tf.nn.relu(batch_norm)
 
     def mini_encoder_decoder(self, feature_maps):
-    C = feature_maps.get_shape()[3].value
-    en_conv1 = convLayer(feature_maps, filter_shape=[3,3,C,2*C], 
-                         name="en_conv1")
-    en_relu1 = tf.nn.relu(en_conv1, name="en_relu1")
-    en_pool1 = tf.nn.max_pool(en_relu1, ksize=[1,2,2,1], strides=[1,2,2,1],
-                              padding="SAME", name="en_pool1")
-    en_conv2 = convLayer(en_pool1, filter_shape=[3,3,2*C,4*C], name="en_conv2")
-    en_relu2 = tf.nn.relu(en_conv2, name="en_relu2")
-    en_pool2 = tf.nn.max_pool(en_relu2, ksize=[1,2,2,1], strides=[1,2,2,1],
-                              padding="SAME", name="en_pool2")
-    de_conv1 = deconvLayer(en_pool2, filter_shape=[3,3,2*C,4*C], 
-                           output_shape=tf.shape(en_pool1), name="de_conv1")
-    de_conv2 = deconvLayer(de_conv1, filter_shape=[3,3,C,2*C], 
-                           output_shape=tf.shape(feature_maps), name="de_conv2")
+        C = feature_maps.get_shape()[3].value
+        en_conv1 = convLayer(feature_maps, filter_shape=[3,3,C,2*C], 
+                             name="en_conv1")
+        en_relu1 = tf.nn.relu(en_conv1, name="en_relu1")
+        en_pool1 = tf.nn.max_pool(en_relu1, ksize=[1,2,2,1], strides=[1,2,2,1],
+                                  padding="SAME", name="en_pool1")
+        en_conv2 = convLayer(en_pool1, filter_shape=[3,3,2*C,4*C], name="en_conv2")
+        en_relu2 = tf.nn.relu(en_conv2, name="en_relu2")
+        en_pool2 = tf.nn.max_pool(en_relu2, ksize=[1,2,2,1], strides=[1,2,2,1],
+                                  padding="SAME", name="en_pool2")
+        de_conv1 = deconvLayer(en_pool2, filter_shape=[3,3,2*C,4*C], 
+                               output_shape=tf.shape(en_pool1), name="de_conv1")
+        de_conv2 = deconvLayer(de_conv1, filter_shape=[3,3,C,2*C], 
+                               output_shape=tf.shape(feature_maps), name="de_conv2")
     return de_conv2
 
     def build(self):

@@ -11,9 +11,9 @@ class DatasetReader:
     training_data_file = dataset_directory + 'train.txt'
     validation_data_file = dataset_directory + 'val.txt'
     test_data_file = dataset_directory + 'test.txt'
-    self.training_data = open('./datasets/unreal_randomyaw/train.txt').readlines()
-    self.validation_data = open('./datasets/unreal_randomyaw/val.txt').readlines()
-    self.test_data = open('./datasets/unreal_randomyaw/test.txt').readlines()
+    self.training_data = open(training_data_file).readlines()
+    self.validation_data = open(validation_data_file).readlines()
+    self.test_data = open(test_data_file).readlines()
     self.test_data_size = len(self.test_data)
     self.test_index = 0
     self.WIDTH = WIDTH

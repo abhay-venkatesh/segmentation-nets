@@ -8,6 +8,7 @@ from utils.DatasetReader import DatasetReader
 from utils.DataPreprocessor import DataPreprocessor
 from utils.DataPostprocessor import DataPostprocessor
 from utils.OutsideDataFeeder import OutsideDataFeeder
+from utils.CustomTestDataFeeder import CustomTestDataFeeder
 from utils.Logger import Logger
 from PIL import Image
 import datetime

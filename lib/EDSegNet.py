@@ -407,7 +407,7 @@ class EDSegNet:
 
                 # Save the model variables
                 self.saver.save(self.session, 
-                                self.checkpoint_directory + 'DFSegNet', 
+                                self.checkpoint_directory + 'EDSegNet', 
                                 global_step = i)
 
             # Print outputs every 1000 iterations

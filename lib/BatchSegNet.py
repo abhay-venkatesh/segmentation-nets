@@ -322,6 +322,8 @@ class BatchSegNet:
                 val_loss = self.session.run(self.loss, feed_dict=feed_dict)
                 val_accuracy = self.session.run(self.accuracy, 
                                                 feed_dict=feed_dict)
+                val_mean_IoU, update_op = self.session.run(self.mean_IoU, 
+                                                feed_dict=feed_dict)
                 print("%s ---> Validation_loss: %g" % (datetime.datetime.now(), 
                                                        val_loss))
                 print("%s ---> Validation_accuracy: %g" % 
@@ -341,7 +343,8 @@ class BatchSegNet:
                                  (datetime.datetime.now(), val_loss))
                 self.logger.log("%s ---> Validation_accuracy: %g\n" % 
                                  (datetime.datetime.now(), val_accuracy))
-                self.logger.log_for_graphing(i, val_loss, val_accuracy)
+                self.logger.log_for_graphing(i, val_loss, val_accuracy, 
+                                             val_mean_IoU)
 
                 # Save the model variables
                 self.saver.save(self.session, 

@@ -350,16 +350,15 @@ class BatchSegNet:
 
             # Print outputs every 1000 iterations
             if i % 1000 == 0:
-                self.test(learning_rate)
+                self.test(learning_rate, self.dataset_directory)
                 self.logger.graph_training_stats()
 
-
-    def test(self, learning_rate=0.1):
+    def test(self, learning_rate, dataset_directory):
 
         # Get trained weights and biases
         current_step = self.restore_session()
 
-        dr = DatasetReader(480, 320)
+        dr = DatasetReader(480, 320, dataset_directory)
 
         for i in range(min(dr.test_data_size, 10)):
             image, ground_truth = dr.next_test_pair()

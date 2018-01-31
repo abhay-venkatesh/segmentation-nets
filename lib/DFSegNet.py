@@ -479,7 +479,13 @@ class DFSegNet:
                          self.train_phase: 1, self.rate: learning_rate}
             segmentation = np.squeeze(self.session.run(self.prediction, 
                                                        feed_dict=feed_dict))
+            test_accuracy = self.session.run(self.accuracy, 
+                                                feed_dict=feed_dict)
+            self.logger.log_for_test_graphing(i, test_accuracy)
+      
             dp = DataPostprocessor()
             dp.write_out(i, image, segmentation, current_step)
+
+        self.logger.graph_test_stats()
 
 

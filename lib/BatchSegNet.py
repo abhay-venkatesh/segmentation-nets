@@ -49,6 +49,7 @@ class BatchSegNet:
         config = tf.ConfigProto(allow_soft_placement=True)
         self.session = tf.Session(config=config)
         self.session.run(tf.global_variables_initializer())
+        self.session.run(tf.local_variables_initializer())
 
         # Make saving trained weights and biases possible
         self.saver = tf.train.Saver(max_to_keep = 5, 

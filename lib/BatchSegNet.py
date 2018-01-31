@@ -262,6 +262,10 @@ class BatchSegNet:
             self.accuracy = tf.contrib.metrics.accuracy(self.prediction, 
                                                         self.y, 
                                                         name='accuracy')
+            self.mean_IoU = tf.contrib.metrics.streaming_mean_iou(self.prediction, 
+                                                        self.y,
+                                                        self.num_classes, 
+                                                        name='mean_IoU')
 
             # Prepare for summaries
             """

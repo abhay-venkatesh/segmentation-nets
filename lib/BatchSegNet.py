@@ -276,90 +276,90 @@ class BatchSegNet:
         """
 
 
-def restore_session(self):
-    global_step = 0
+    def restore_session(self):
+        global_step = 0
 
-    if not os.path.exists(self.checkpoint_directory):
-        raise IOError(self.checkpoint_directory + ' does not exist.')
-    else:
-        path = tf.train.get_checkpoint_state(self.checkpoint_directory)
-        if path is None:
-            pass
+        if not os.path.exists(self.checkpoint_directory):
+            raise IOError(self.checkpoint_directory + ' does not exist.')
         else:
-            self.saver.restore(self.session, path.model_checkpoint_path)
-            global_step = int(path.model_checkpoint_path.split('-')[-1])
+            path = tf.train.get_checkpoint_state(self.checkpoint_directory)
+            if path is None:
+                pass
+            else:
+                self.saver.restore(self.session, path.model_checkpoint_path)
+                global_step = int(path.model_checkpoint_path.split('-')[-1])
 
-    return global_step
+        return global_step
 
 
-def train(self, num_iterations=10000, learning_rate=0.1, batch_size=5):
-    current_step = self.restore_session()
+    def train(self, num_iterations=10000, learning_rate=0.1, batch_size=5):
+        current_step = self.restore_session()
 
-    bdr = BatchDatasetReader(self.dataset_directory, 480, 320, current_step, 
-                             batch_size)
+        bdr = BatchDatasetReader(self.dataset_directory, 480, 320, current_step, 
+                                 batch_size)
 
-    # Begin Training
-    for i in range(current_step, num_iterations):
+        # Begin Training
+        for i in range(current_step, num_iterations):
 
-        # One training step
-        images, ground_truths = bdr.next_training_batch()
-        feed_dict = {self.x: images, self.y: ground_truths, 
-                     self.train_phase: 1, self.rate: learning_rate}
-        print('run train step: ' + str(i))
-        self.train_step.run(session=self.session, feed_dict=feed_dict)
-
-        # Print loss every 10 iterations
-        if i % 10 == 0:
-            train_loss = self.session.run(self.loss, feed_dict=feed_dict)
-            print("Step: %d, Train_loss:%g" % (i, train_loss))
-
-            """
-            summary, _ = self.session.run([self.merged, self.train_step], 
-                                          feed_dict=feed_dict)
-            self.train_writer.add_summary(summary, i)
-            """
-
-        # Run against validation dataset for 100 iterations
-        if i % 100 == 0:
-            images, ground_truths = bdr.next_val_batch()
+            # One training step
+            images, ground_truths = bdr.next_training_batch()
             feed_dict = {self.x: images, self.y: ground_truths, 
                          self.train_phase: 1, self.rate: learning_rate}
-            val_loss = self.session.run(self.loss, feed_dict=feed_dict)
-            val_accuracy = self.session.run(self.accuracy, 
-                                            feed_dict=feed_dict)
-            val_mean_IoU, update_op = self.session.run(self.mean_IoU, 
-                                            feed_dict=feed_dict)
-            print("%s ---> Validation_loss: %g" % (datetime.datetime.now(), 
-                                                   val_loss))
-            print("%s ---> Validation_accuracy: %g" % 
-                  (datetime.datetime.now(), val_accuracy))
+            print('run train step: ' + str(i))
+            self.train_step.run(session=self.session, feed_dict=feed_dict)
 
-            """
-            summary, _ = self.session.run([self.merged, self.accuracy], 
-                                          feed_dict=feed_dict)
-            self.val_writer.add_summary(summary, i)
-            """
-            self.logger.log("%s ---> Number of epochs: %g\n" % 
-                            (datetime.datetime.now(), 
-                             math.floor((i * batch_size)/bdr.num_train)))
-            self.logger.log("%s ---> Number of iterations: %g\n" % 
-                             (datetime.datetime.now(), i))
-            self.logger.log("%s ---> Validation_loss: %g\n" % 
-                             (datetime.datetime.now(), val_loss))
-            self.logger.log("%s ---> Validation_accuracy: %g\n" % 
-                             (datetime.datetime.now(), val_accuracy))
-            self.logger.log_for_graphing(i, val_loss, val_accuracy, 
-                                         val_mean_IoU)
+            # Print loss every 10 iterations
+            if i % 10 == 0:
+                train_loss = self.session.run(self.loss, feed_dict=feed_dict)
+                print("Step: %d, Train_loss:%g" % (i, train_loss))
 
-            # Save the model variables
-            self.saver.save(self.session, 
-                            self.checkpoint_directory + 'segnet', 
-                            global_step = i)
+                """
+                summary, _ = self.session.run([self.merged, self.train_step], 
+                                              feed_dict=feed_dict)
+                self.train_writer.add_summary(summary, i)
+                """
 
-        # Print outputs every 1000 iterations
-        if i % 1000 == 0:
-            self.test(learning_rate, self.dataset_directory)
-            self.logger.graph_training_stats()
+            # Run against validation dataset for 100 iterations
+            if i % 100 == 0:
+                images, ground_truths = bdr.next_val_batch()
+                feed_dict = {self.x: images, self.y: ground_truths, 
+                             self.train_phase: 1, self.rate: learning_rate}
+                val_loss = self.session.run(self.loss, feed_dict=feed_dict)
+                val_accuracy = self.session.run(self.accuracy, 
+                                                feed_dict=feed_dict)
+                val_mean_IoU, update_op = self.session.run(self.mean_IoU, 
+                                                feed_dict=feed_dict)
+                print("%s ---> Validation_loss: %g" % (datetime.datetime.now(), 
+                                                       val_loss))
+                print("%s ---> Validation_accuracy: %g" % 
+                      (datetime.datetime.now(), val_accuracy))
+
+                """
+                summary, _ = self.session.run([self.merged, self.accuracy], 
+                                              feed_dict=feed_dict)
+                self.val_writer.add_summary(summary, i)
+                """
+                self.logger.log("%s ---> Number of epochs: %g\n" % 
+                                (datetime.datetime.now(), 
+                                 math.floor((i * batch_size)/bdr.num_train)))
+                self.logger.log("%s ---> Number of iterations: %g\n" % 
+                                 (datetime.datetime.now(), i))
+                self.logger.log("%s ---> Validation_loss: %g\n" % 
+                                 (datetime.datetime.now(), val_loss))
+                self.logger.log("%s ---> Validation_accuracy: %g\n" % 
+                                 (datetime.datetime.now(), val_accuracy))
+                self.logger.log_for_graphing(i, val_loss, val_accuracy, 
+                                             val_mean_IoU)
+
+                # Save the model variables
+                self.saver.save(self.session, 
+                                self.checkpoint_directory + 'segnet', 
+                                global_step = i)
+
+            # Print outputs every 1000 iterations
+            if i % 1000 == 0:
+                self.test(learning_rate, self.dataset_directory)
+                self.logger.graph_training_stats()
 
     def test(self, learning_rate, dataset_directory):
 

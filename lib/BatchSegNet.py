@@ -16,8 +16,8 @@ import os
 import math
 
 # Only use a single GPU when not testing
-if os.name != 'nt': 
-    os.environ["CUDA_VISIBLE_DEVICES"] = '1'
+# if os.name != 'nt': 
+#    os.environ["CUDA_VISIBLE_DEVICES"] = '1'
 
 
 class BatchSegNet:
@@ -151,216 +151,215 @@ class BatchSegNet:
         return tf.nn.relu(batch_norm)
 
     def build(self):
-        with tf.device('/gpu:0'):
-            # Declare placeholders
-            self.x = tf.placeholder(tf.float32, shape=(None, None, None, 3))
-            # self.y dimensions = BATCH_SIZE * WIDTH * HEIGHT
-            self.y = tf.placeholder(tf.int64, shape=(None, None, None))
-            expected = tf.expand_dims(self.y, -1)
-            self.train_phase = tf.placeholder(tf.bool, name='train_phase')
-            self.rate = tf.placeholder(tf.float32, shape=[])
+        # Declare placeholders
+        self.x = tf.placeholder(tf.float32, shape=(None, None, None, 3))
+        # self.y dimensions = BATCH_SIZE * WIDTH * HEIGHT
+        self.y = tf.placeholder(tf.int64, shape=(None, None, None))
+        expected = tf.expand_dims(self.y, -1)
+        self.train_phase = tf.placeholder(tf.bool, name='train_phase')
+        self.rate = tf.placeholder(tf.float32, shape=[])
 
-            # First encoder
-            conv_1_1 = self.conv_layer_with_bn(self.x, [3, 3, 3, 64], 
-                                               self.train_phase, 'conv1_1')
-            conv_1_2 = self.conv_layer_with_bn(conv_1_1, [3, 3, 64, 64], 
-                                               self.train_phase, 'conv1_2')
-            pool_1, pool_1_argmax = self.pool_layer(conv_1_2)
+        # First encoder
+        conv_1_1 = self.conv_layer_with_bn(self.x, [3, 3, 3, 64], 
+                                           self.train_phase, 'conv1_1')
+        conv_1_2 = self.conv_layer_with_bn(conv_1_1, [3, 3, 64, 64], 
+                                           self.train_phase, 'conv1_2')
+        pool_1, pool_1_argmax = self.pool_layer(conv_1_2)
 
-            # Second encoder
-            conv_2_1 = self.conv_layer_with_bn(pool_1, [3, 3, 64, 128], 
-                                               self.train_phase, 'conv2_1')
-            conv_2_2 = self.conv_layer_with_bn(conv_2_1, [3, 3, 128, 128], 
-                                               self.train_phase, 'conv2_2')
-            pool_2, pool_2_argmax = self.pool_layer(conv_2_2)
+        # Second encoder
+        conv_2_1 = self.conv_layer_with_bn(pool_1, [3, 3, 64, 128], 
+                                           self.train_phase, 'conv2_1')
+        conv_2_2 = self.conv_layer_with_bn(conv_2_1, [3, 3, 128, 128], 
+                                           self.train_phase, 'conv2_2')
+        pool_2, pool_2_argmax = self.pool_layer(conv_2_2)
 
-            # Third encoder
-            conv_3_1 = self.conv_layer_with_bn(pool_2, [3, 3, 128, 256], 
-                                               self.train_phase, 'conv3_1')
-            conv_3_2 = self.conv_layer_with_bn(conv_3_1, [3, 3, 256, 256], 
-                                               self.train_phase, 'conv3_2')
-            conv_3_3 = self.conv_layer_with_bn(conv_3_2, [3, 3, 256, 256], 
-                                               self.train_phase, 'conv3_3')
-            pool_3, pool_3_argmax = self.pool_layer(conv_3_3)
+        # Third encoder
+        conv_3_1 = self.conv_layer_with_bn(pool_2, [3, 3, 128, 256], 
+                                           self.train_phase, 'conv3_1')
+        conv_3_2 = self.conv_layer_with_bn(conv_3_1, [3, 3, 256, 256], 
+                                           self.train_phase, 'conv3_2')
+        conv_3_3 = self.conv_layer_with_bn(conv_3_2, [3, 3, 256, 256], 
+                                           self.train_phase, 'conv3_3')
+        pool_3, pool_3_argmax = self.pool_layer(conv_3_3)
 
-            # Fourth encoder
-            conv_4_1 = self.conv_layer_with_bn(pool_3, [3, 3, 256, 512], 
-                                               self.train_phase, 'conv4_1')
-            conv_4_2 = self.conv_layer_with_bn(conv_4_1, [3, 3, 512, 512], 
-                                               self.train_phase, 'conv4_2')
-            conv_4_3 = self.conv_layer_with_bn(conv_4_2, [3, 3, 512, 512], 
-                                               self.train_phase, 'conv4_3')
-            pool_4, pool_4_argmax = self.pool_layer(conv_4_3)
+        # Fourth encoder
+        conv_4_1 = self.conv_layer_with_bn(pool_3, [3, 3, 256, 512], 
+                                           self.train_phase, 'conv4_1')
+        conv_4_2 = self.conv_layer_with_bn(conv_4_1, [3, 3, 512, 512], 
+                                           self.train_phase, 'conv4_2')
+        conv_4_3 = self.conv_layer_with_bn(conv_4_2, [3, 3, 512, 512], 
+                                           self.train_phase, 'conv4_3')
+        pool_4, pool_4_argmax = self.pool_layer(conv_4_3)
 
-            # Fifth encoder
-            conv_5_1 = self.conv_layer_with_bn(pool_4, [3, 3, 512, 512], 
-                                               self.train_phase, 'conv5_1')
-            conv_5_2 = self.conv_layer_with_bn(conv_5_1, [3, 3, 512, 512], 
-                                               self.train_phase, 'conv5_2')
-            conv_5_3 = self.conv_layer_with_bn(conv_5_2, [3, 3, 512, 512], 
-                                               self.train_phase, 'conv5_3')
-            pool_5, pool_5_argmax = self.pool_layer(conv_5_3)
+        # Fifth encoder
+        conv_5_1 = self.conv_layer_with_bn(pool_4, [3, 3, 512, 512], 
+                                           self.train_phase, 'conv5_1')
+        conv_5_2 = self.conv_layer_with_bn(conv_5_1, [3, 3, 512, 512], 
+                                           self.train_phase, 'conv5_2')
+        conv_5_3 = self.conv_layer_with_bn(conv_5_2, [3, 3, 512, 512], 
+                                           self.train_phase, 'conv5_3')
+        pool_5, pool_5_argmax = self.pool_layer(conv_5_3)
 
-            # First decoder
-            unpool_5 = self.unpool(pool_5, pool_5_argmax)
-            deconv_5_3 = self.conv_layer_with_bn(unpool_5, [3, 3, 512, 512], 
-                                                 self.train_phase, 'deconv5_3')
-            deconv_5_2 = self.conv_layer_with_bn(deconv_5_3, [3, 3, 512, 512], 
-                                                 self.train_phase, 'deconv5_2')
-            deconv_5_1 = self.conv_layer_with_bn(deconv_5_2, [3, 3, 512, 512], 
-                                                 self.train_phase, 'deconv5_1')
+        # First decoder
+        unpool_5 = self.unpool(pool_5, pool_5_argmax)
+        deconv_5_3 = self.conv_layer_with_bn(unpool_5, [3, 3, 512, 512], 
+                                             self.train_phase, 'deconv5_3')
+        deconv_5_2 = self.conv_layer_with_bn(deconv_5_3, [3, 3, 512, 512], 
+                                             self.train_phase, 'deconv5_2')
+        deconv_5_1 = self.conv_layer_with_bn(deconv_5_2, [3, 3, 512, 512], 
+                                             self.train_phase, 'deconv5_1')
 
-            # Second decoder
-            unpool_4 = self.unpool(deconv_5_1, pool_4_argmax)
-            deconv_4_3 = self.conv_layer_with_bn(unpool_4, [3, 3, 512, 512], 
-                                                 self.train_phase, 'deconv4_3')
-            deconv_4_2 = self.conv_layer_with_bn(deconv_4_3, [3, 3, 512, 512], 
-                                                 self.train_phase, 'deconv4_2')
-            deconv_4_1 = self.conv_layer_with_bn(deconv_4_2, [3, 3, 512, 256], 
-                                                 self.train_phase, 'deconv4_1')
+        # Second decoder
+        unpool_4 = self.unpool(deconv_5_1, pool_4_argmax)
+        deconv_4_3 = self.conv_layer_with_bn(unpool_4, [3, 3, 512, 512], 
+                                             self.train_phase, 'deconv4_3')
+        deconv_4_2 = self.conv_layer_with_bn(deconv_4_3, [3, 3, 512, 512], 
+                                             self.train_phase, 'deconv4_2')
+        deconv_4_1 = self.conv_layer_with_bn(deconv_4_2, [3, 3, 512, 256], 
+                                             self.train_phase, 'deconv4_1')
 
-            # Third decoder
-            unpool_3 = self.unpool(deconv_4_1, pool_3_argmax)
-            deconv_3_3 = self.conv_layer_with_bn(unpool_3, [3, 3, 256, 256], 
-                                                 self.train_phase, 'deconv3_3')
-            deconv_3_2 = self.conv_layer_with_bn(deconv_3_3, [3, 3, 256, 256], 
-                                                 self.train_phase, 'deconv3_2')
-            deconv_3_1 = self.conv_layer_with_bn(deconv_3_2, [3, 3, 256, 128], 
-                                                 self.train_phase, 'deconv3_1')
+        # Third decoder
+        unpool_3 = self.unpool(deconv_4_1, pool_3_argmax)
+        deconv_3_3 = self.conv_layer_with_bn(unpool_3, [3, 3, 256, 256], 
+                                             self.train_phase, 'deconv3_3')
+        deconv_3_2 = self.conv_layer_with_bn(deconv_3_3, [3, 3, 256, 256], 
+                                             self.train_phase, 'deconv3_2')
+        deconv_3_1 = self.conv_layer_with_bn(deconv_3_2, [3, 3, 256, 128], 
+                                             self.train_phase, 'deconv3_1')
 
-            # Fourth decoder
-            unpool_2 = self.unpool(deconv_3_1, pool_2_argmax)
-            deconv_2_2 = self.conv_layer_with_bn(unpool_2, [3, 3, 128, 128], 
-                                                 self.train_phase, 'deconv2_2')
-            deconv_2_1 = self.conv_layer_with_bn(deconv_2_2, [3, 3, 128, 64], 
-                                                 self.train_phase, 'deconv2_1')
+        # Fourth decoder
+        unpool_2 = self.unpool(deconv_3_1, pool_2_argmax)
+        deconv_2_2 = self.conv_layer_with_bn(unpool_2, [3, 3, 128, 128], 
+                                             self.train_phase, 'deconv2_2')
+        deconv_2_1 = self.conv_layer_with_bn(deconv_2_2, [3, 3, 128, 64], 
+                                             self.train_phase, 'deconv2_1')
 
-            # Fifth decoder
-            unpool_1 = self.unpool(deconv_2_1, pool_1_argmax)
-            deconv_1_2 = self.conv_layer_with_bn(unpool_1, [3, 3, 64, 64], 
-                                                 self.train_phase, 'deconv1_2')
-            deconv_1_1 = self.conv_layer_with_bn(deconv_1_2, [3, 3, 64, 32], 
-                                                 self.train_phase, 'deconv1_1')
+        # Fifth decoder
+        unpool_1 = self.unpool(deconv_2_1, pool_1_argmax)
+        deconv_1_2 = self.conv_layer_with_bn(unpool_1, [3, 3, 64, 64], 
+                                             self.train_phase, 'deconv1_2')
+        deconv_1_1 = self.conv_layer_with_bn(deconv_1_2, [3, 3, 64, 32], 
+                                             self.train_phase, 'deconv1_1')
 
-            # Produce class scores
-            # score_1 dimensions: BATCH_SIZE * WIDTH * HEIGHT * NUM_CLASSES
-            score_1 = self.conv_layer_with_bn(deconv_1_1, 
-                                              [1, 1, 32, self.num_classes], 
-                                              self.train_phase, 
-                                              'score_1')
-            logits = tf.reshape(score_1, (-1, self.num_classes))
+        # Produce class scores
+        # score_1 dimensions: BATCH_SIZE * WIDTH * HEIGHT * NUM_CLASSES
+        score_1 = self.conv_layer_with_bn(deconv_1_1, 
+                                          [1, 1, 32, self.num_classes], 
+                                          self.train_phase, 
+                                          'score_1')
+        logits = tf.reshape(score_1, (-1, self.num_classes))
 
-            # Prepare network outputs
-            cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(
-                labels=tf.reshape(expected, [-1]), 
-                logits=logits, 
-                name='x_entropy')
-            self.loss = tf.reduce_mean(cross_entropy, name='x_entropy_mean')
-            optimizer = tf.train.AdamOptimizer(self.rate)
-            self.train_step = optimizer.minimize(self.loss)
-            
-            # Metrics
-            self.prediction = tf.argmax(score_1, axis=3, name="prediction")
-            self.accuracy = tf.contrib.metrics.accuracy(self.prediction, 
-                                                        self.y, 
-                                                        name='accuracy')
-            self.mean_IoU = tf.contrib.metrics.streaming_mean_iou(self.prediction, 
-                                                        self.y,
-                                                        self.num_classes, 
-                                                        name='mean_IoU')
+        # Prepare network outputs
+        cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(
+            labels=tf.reshape(expected, [-1]), 
+            logits=logits, 
+            name='x_entropy')
+        self.loss = tf.reduce_mean(cross_entropy, name='x_entropy_mean')
+        optimizer = tf.train.AdamOptimizer(self.rate)
+        self.train_step = optimizer.minimize(self.loss)
+        
+        # Metrics
+        self.prediction = tf.argmax(score_1, axis=3, name="prediction")
+        self.accuracy = tf.contrib.metrics.accuracy(self.prediction, 
+                                                    self.y, 
+                                                    name='accuracy')
+        self.mean_IoU = tf.contrib.metrics.streaming_mean_iou(self.prediction, 
+                                                    self.y,
+                                                    self.num_classes, 
+                                                    name='mean_IoU')
 
-            # Prepare for summaries
-            """
-            tf.summary.scalar('loss', self.loss)
-            tf.summary.scalar('accuracy', self.accuracy)
-            self.merged = tf.summary.merge_all()
-            """
+        # Prepare for summaries
+        """
+        tf.summary.scalar('loss', self.loss)
+        tf.summary.scalar('accuracy', self.accuracy)
+        self.merged = tf.summary.merge_all()
+        """
 
 
-    def restore_session(self):
-        global_step = 0
+def restore_session(self):
+    global_step = 0
 
-        if not os.path.exists(self.checkpoint_directory):
-            raise IOError(self.checkpoint_directory + ' does not exist.')
+    if not os.path.exists(self.checkpoint_directory):
+        raise IOError(self.checkpoint_directory + ' does not exist.')
+    else:
+        path = tf.train.get_checkpoint_state(self.checkpoint_directory)
+        if path is None:
+            pass
         else:
-            path = tf.train.get_checkpoint_state(self.checkpoint_directory)
-            if path is None:
-                pass
-            else:
-                self.saver.restore(self.session, path.model_checkpoint_path)
-                global_step = int(path.model_checkpoint_path.split('-')[-1])
+            self.saver.restore(self.session, path.model_checkpoint_path)
+            global_step = int(path.model_checkpoint_path.split('-')[-1])
 
-        return global_step
+    return global_step
 
-    
-    def train(self, num_iterations=10000, learning_rate=0.1, batch_size=5):
-        current_step = self.restore_session()
 
-        bdr = BatchDatasetReader(self.dataset_directory, 480, 320, current_step, 
-                                 batch_size)
+def train(self, num_iterations=10000, learning_rate=0.1, batch_size=5):
+    current_step = self.restore_session()
 
-        # Begin Training
-        for i in range(current_step, num_iterations):
+    bdr = BatchDatasetReader(self.dataset_directory, 480, 320, current_step, 
+                             batch_size)
 
-            # One training step
-            images, ground_truths = bdr.next_training_batch()
+    # Begin Training
+    for i in range(current_step, num_iterations):
+
+        # One training step
+        images, ground_truths = bdr.next_training_batch()
+        feed_dict = {self.x: images, self.y: ground_truths, 
+                     self.train_phase: 1, self.rate: learning_rate}
+        print('run train step: ' + str(i))
+        self.train_step.run(session=self.session, feed_dict=feed_dict)
+
+        # Print loss every 10 iterations
+        if i % 10 == 0:
+            train_loss = self.session.run(self.loss, feed_dict=feed_dict)
+            print("Step: %d, Train_loss:%g" % (i, train_loss))
+
+            """
+            summary, _ = self.session.run([self.merged, self.train_step], 
+                                          feed_dict=feed_dict)
+            self.train_writer.add_summary(summary, i)
+            """
+
+        # Run against validation dataset for 100 iterations
+        if i % 100 == 0:
+            images, ground_truths = bdr.next_val_batch()
             feed_dict = {self.x: images, self.y: ground_truths, 
                          self.train_phase: 1, self.rate: learning_rate}
-            print('run train step: ' + str(i))
-            self.train_step.run(session=self.session, feed_dict=feed_dict)
+            val_loss = self.session.run(self.loss, feed_dict=feed_dict)
+            val_accuracy = self.session.run(self.accuracy, 
+                                            feed_dict=feed_dict)
+            val_mean_IoU, update_op = self.session.run(self.mean_IoU, 
+                                            feed_dict=feed_dict)
+            print("%s ---> Validation_loss: %g" % (datetime.datetime.now(), 
+                                                   val_loss))
+            print("%s ---> Validation_accuracy: %g" % 
+                  (datetime.datetime.now(), val_accuracy))
 
-            # Print loss every 10 iterations
-            if i % 10 == 0:
-                train_loss = self.session.run(self.loss, feed_dict=feed_dict)
-                print("Step: %d, Train_loss:%g" % (i, train_loss))
+            """
+            summary, _ = self.session.run([self.merged, self.accuracy], 
+                                          feed_dict=feed_dict)
+            self.val_writer.add_summary(summary, i)
+            """
+            self.logger.log("%s ---> Number of epochs: %g\n" % 
+                            (datetime.datetime.now(), 
+                             math.floor((i * batch_size)/bdr.num_train)))
+            self.logger.log("%s ---> Number of iterations: %g\n" % 
+                             (datetime.datetime.now(), i))
+            self.logger.log("%s ---> Validation_loss: %g\n" % 
+                             (datetime.datetime.now(), val_loss))
+            self.logger.log("%s ---> Validation_accuracy: %g\n" % 
+                             (datetime.datetime.now(), val_accuracy))
+            self.logger.log_for_graphing(i, val_loss, val_accuracy, 
+                                         val_mean_IoU)
 
-                """
-                summary, _ = self.session.run([self.merged, self.train_step], 
-                                              feed_dict=feed_dict)
-                self.train_writer.add_summary(summary, i)
-                """
+            # Save the model variables
+            self.saver.save(self.session, 
+                            self.checkpoint_directory + 'segnet', 
+                            global_step = i)
 
-            # Run against validation dataset for 100 iterations
-            if i % 100 == 0:
-                images, ground_truths = bdr.next_val_batch()
-                feed_dict = {self.x: images, self.y: ground_truths, 
-                             self.train_phase: 1, self.rate: learning_rate}
-                val_loss = self.session.run(self.loss, feed_dict=feed_dict)
-                val_accuracy = self.session.run(self.accuracy, 
-                                                feed_dict=feed_dict)
-                val_mean_IoU, update_op = self.session.run(self.mean_IoU, 
-                                                feed_dict=feed_dict)
-                print("%s ---> Validation_loss: %g" % (datetime.datetime.now(), 
-                                                       val_loss))
-                print("%s ---> Validation_accuracy: %g" % 
-                      (datetime.datetime.now(), val_accuracy))
-
-                """
-                summary, _ = self.session.run([self.merged, self.accuracy], 
-                                              feed_dict=feed_dict)
-                self.val_writer.add_summary(summary, i)
-                """
-                self.logger.log("%s ---> Number of epochs: %g\n" % 
-                                (datetime.datetime.now(), 
-                                 math.floor((i * batch_size)/bdr.num_train)))
-                self.logger.log("%s ---> Number of iterations: %g\n" % 
-                                 (datetime.datetime.now(), i))
-                self.logger.log("%s ---> Validation_loss: %g\n" % 
-                                 (datetime.datetime.now(), val_loss))
-                self.logger.log("%s ---> Validation_accuracy: %g\n" % 
-                                 (datetime.datetime.now(), val_accuracy))
-                self.logger.log_for_graphing(i, val_loss, val_accuracy, 
-                                             val_mean_IoU)
-
-                # Save the model variables
-                self.saver.save(self.session, 
-                                self.checkpoint_directory + 'segnet', 
-                                global_step = i)
-
-            # Print outputs every 1000 iterations
-            if i % 1000 == 0:
-                self.test(learning_rate, self.dataset_directory)
-                self.logger.graph_training_stats()
+        # Print outputs every 1000 iterations
+        if i % 1000 == 0:
+            self.test(learning_rate, self.dataset_directory)
+            self.logger.graph_training_stats()
 
     def test(self, learning_rate, dataset_directory):
 

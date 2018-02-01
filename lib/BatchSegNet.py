@@ -8,6 +8,7 @@ from utils.DatasetReader import DatasetReader
 from utils.DataPreprocessor import DataPreprocessor
 from utils.DataPostprocessor import DataPostprocessor
 from utils.OutsideDataFeeder import OutsideDataFeeder
+from utils.CustomTestDataFeeder import CustomTestDataFeeder
 from utils.Logger import Logger
 from PIL import Image
 import datetime
@@ -407,6 +408,29 @@ class BatchSegNet:
                                   feed_dict=feed_dict))
         dp = DataPostprocessor()
         dp.write_out(0, image, segmentation, current_step)
+
+
+    def test_sequence(self, learning_rate=0.1):
+        # Get trained weights and biases
+        current_step = self.restore_session()
+
+        dr = CustomTestDataFeeder(480, 320, './datasets/UnrealNeighborhood-11Class-StreetPrimary-0.15/Sequence-20/')
+
+        for i in range(min(dr.dataset_size, 20)):
+            image, ground_truth = dr.next_test_image()
+            # TODO: Fix self.train_phase = 0 not working issue
+            feed_dict = {self.x: [image], self.y: [ground_truth],
+                         self.train_phase: 1, self.rate: learning_rate}
+            segmentation = np.squeeze(self.session.run(self.prediction, 
+                                                       feed_dict=feed_dict))
+            test_accuracy = self.session.run(self.accuracy, 
+                                                feed_dict=feed_dict)
+            self.logger.log_for_test_graphing(i, test_accuracy)
+      
+            dp = DataPostprocessor()
+            dp.write_out(i, image, segmentation, current_step)
+
+        self.logger.graph_test_stats()
 
 
 

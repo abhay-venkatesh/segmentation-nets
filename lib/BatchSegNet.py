@@ -413,7 +413,7 @@ class BatchSegNet:
         # Get trained weights and biases
         current_step = self.restore_session()
 
-        dr = CustomTestDataFeeder(480, 320, './datasets/UnrealNeighborhood-11Class-StreetPrimary-0.15/Sequence-20/')
+        dr = CustomTestDataFeeder(480, 320, './datasets/Sequence-20-Unseen/')
 
         for i in range(min(dr.dataset_size, 20)):
             image, ground_truth = dr.next_test_image()
